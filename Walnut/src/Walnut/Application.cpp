@@ -6,6 +6,8 @@
 
 #include "backends/imgui_impl_glfw.h"
 #include "backends/imgui_impl_vulkan.h"
+#include "CustomTitlebar.h"
+#include "VulkanUtils.h"
 #include <stdio.h>          // printf, fprintf
 #include <stdlib.h>         // abort
 #define GLFW_INCLUDE_NONE
@@ -57,14 +59,7 @@ static uint32_t s_CurrentFrameIndex = 0;
 
 static Walnut::Application* s_Instance = nullptr;
 
-void check_vk_result(VkResult err)
-{
-	if (err == 0)
-		return;
-	fprintf(stderr, "[vulkan] Error: VkResult = %d\n", err);
-	if (err < 0)
-		abort();
-}
+using Walnut::check_vk_result;
 
 #ifdef IMGUI_VULKAN_DEBUG_REPORT
 static VKAPI_ATTR VkBool32 VKAPI_CALL debug_report(VkDebugReportFlagsEXT flags, VkDebugReportObjectTypeEXT objectType, uint64_t object, size_t location, int32_t messageCode, const char* pLayerPrefix, const char* pMessage, void* pUserData)
@@ -415,7 +410,18 @@ namespace Walnut {
 		}
 
 		glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
+
+		// If custom titlebar is enabled, remove native window decorations
+		if (m_Specification.CustomTitlebar)
+			glfwWindowHint(GLFW_DECORATED, GLFW_FALSE);
+
 		m_WindowHandle = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Name.c_str(), NULL, NULL);
+
+		// Create custom titlebar if enabled
+		if (m_Specification.CustomTitlebar)
+		{
+			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name);
+		}
 
 		// Setup Vulkan
 		if (!glfwVulkanSupported())
@@ -529,6 +535,9 @@ namespace Walnut {
 
 		m_LayerStack.clear();
 
+		// Clear custom titlebar before Vulkan cleanup
+		m_CustomTitlebar.reset();
+
 		// Cleanup
 		VkResult err = vkDeviceWaitIdle(g_Device);
 		check_vk_result(err);
@@ -566,10 +575,6 @@ namespace Walnut {
 		while (!glfwWindowShouldClose(m_WindowHandle) && m_Running)
 		{
 			// Poll and handle events (inputs, window resize, etc.)
-			// You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your inputs.
-			// - When io.WantCaptureMouse is true, do not dispatch mouse input data to your main application.
-			// - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
-			// Generally you may always pass all inputs to dear imgui, and hide them from your application based on those two flags.
 			glfwPollEvents();
 
 			for (auto& layer : m_LayerStack)
@@ -600,33 +605,42 @@ namespace Walnut {
 			ImGui::NewFrame();
 
 			{
+				// Render custom titlebar if enabled
+				if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+				{
+					m_CustomTitlebar->Render(m_MenubarCallback);
+				}
+
 				static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
 
-				// We are using the ImGuiWindowFlags_NoDocking flag to make the parent window not dockable into,
-				// because it would be confusing to have two docking targets within each others.
 				ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
-				if (m_MenubarCallback)
+
+				// Only add the old menu bar when NOT using a custom titlebar
+				if (m_MenubarCallback && !m_Specification.CustomTitlebar)
 					window_flags |= ImGuiWindowFlags_MenuBar;
 
 				const ImGuiViewport* viewport = ImGui::GetMainViewport();
-				ImGui::SetNextWindowPos(viewport->WorkPos);
-				ImGui::SetNextWindowSize(viewport->WorkSize);
+
+				if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+				{
+					// Dockspace occupies everything below the custom titlebar
+					ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + m_CustomTitlebar->GetHeight()));
+					ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - m_CustomTitlebar->GetHeight()));
+				}
+				else
+				{
+					ImGui::SetNextWindowPos(viewport->WorkPos);
+					ImGui::SetNextWindowSize(viewport->WorkSize);
+				}
 				ImGui::SetNextWindowViewport(viewport->ID);
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
 				window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
 				window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
 
-				// When using ImGuiDockNodeFlags_PassthruCentralNode, DockSpace() will render our background
-				// and handle the pass-thru hole, so we ask Begin() to not render a background.
 				if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
 					window_flags |= ImGuiWindowFlags_NoBackground;
 
-				// Important: note that we proceed even if Begin() returns false (aka window is collapsed).
-				// This is because we want to keep our DockSpace() active. If a DockSpace() is inactive,
-				// all active windows docked into it will lose their parent and become undocked.
-				// We cannot preserve the docking relationship between an active window and an inactive docking, otherwise
-				// any change of dockspace/settings would lead to windows being stuck in limbo and never being visible.
 				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
 				ImGui::Begin("DockSpace Demo", nullptr, window_flags);
 				ImGui::PopStyleVar();
@@ -641,7 +655,8 @@ namespace Walnut {
 					ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
 				}
 
-				if (m_MenubarCallback)
+				// Fallback menu bar (only when custom titlebar is OFF)
+				if (m_MenubarCallback && !m_Specification.CustomTitlebar)
 				{
 					if (ImGui::BeginMenuBar())
 					{
@@ -683,7 +698,6 @@ namespace Walnut {
 			m_TimeStep = glm::min<float>(m_FrameTime, 0.0333f);
 			m_LastFrameTime = time;
 		}
-
 	}
 
 	void Application::Close()
@@ -694,6 +708,11 @@ namespace Walnut {
 	float Application::GetTime()
 	{
 		return (float)glfwGetTime();
+	}
+
+	float Application::GetTitlebarHeight() const
+	{
+		return m_CustomTitlebar ? m_CustomTitlebar->GetHeight() : 0.0f;
 	}
 
 	VkInstance Application::GetInstance()

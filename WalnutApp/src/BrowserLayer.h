@@ -4,6 +4,8 @@
 #include "Walnut/Image.h"
 #include "Walnut/WebView.h"
 
+#include "TabManager.h"
+
 #include "include/cef_base.h"
 
 #include <memory>
@@ -18,20 +20,28 @@ public:
 	void OnUIRender() override;
 
 private:
-	void UpdateBrowserImage();
-	void SyncURLFromBrowser();
+	// Per-tab helpers (operate on active tab)
+	void UpdateBrowserImage(BrowserTab& tab);
+	void SyncURLFromBrowser(BrowserTab& tab);
+	void ForwardInputToBrowser(BrowserTab& tab);
+
+	// UI sections
+	void RenderTopTabBar();
+	void RenderSidebar();
 	void RenderAddressBar();
 	void RenderBrowserViewport();
-	void ForwardInputToBrowser();
 
-	CefRefPtr<Walnut::WebView>         m_WebView;
-	std::shared_ptr<Walnut::Image>     m_BrowserImage;
+	// Dialogs
+	void RenderNewTabPopup();
 
-	int  m_ViewWidth  = 1280;
-	int  m_ViewHeight = 720;
+	TabManager m_TabManager;
 
-	char m_URLBuffer[2048] = {};
-	bool m_URLBarFocused   = false;
+	// Sidebar visibility
+	bool m_SidebarOpen = true;
 
-	std::string m_StartURL = "https://www.google.com";
+	// "New Tab" dialog state
+	bool   m_ShowNewTabPopup      = false;
+	int    m_NewTabKind           = 0;  // 0=Dynamic, 1=Permanent, 2=Temporary
+	char   m_NewTabURL[2048]      = "https://www.google.com";
+	float  m_NewTabLifetimeHours  = 24.0f;
 };

@@ -4,11 +4,14 @@
 #include "backends/imgui_impl_vulkan.h"
 
 #include "Application.h"
+#include "VulkanUtils.h"
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
 namespace Walnut {
+
+	using Walnut::check_vk_result;
 
 	namespace Utils {
 

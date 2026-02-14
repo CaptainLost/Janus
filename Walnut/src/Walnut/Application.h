@@ -7,20 +7,26 @@
 #include <memory>
 #include <functional>
 
-#include "imgui.h"
-#include "vulkan/vulkan.h"
-
-void check_vk_result(VkResult err);
-
 struct GLFWwindow;
+struct VkInstance_T;
+struct VkPhysicalDevice_T;
+struct VkDevice_T;
+struct VkCommandBuffer_T;
+typedef VkInstance_T* VkInstance;
+typedef VkPhysicalDevice_T* VkPhysicalDevice;
+typedef VkDevice_T* VkDevice;
+typedef VkCommandBuffer_T* VkCommandBuffer;
 
 namespace Walnut {
+
+	class CustomTitlebar;
 
 	struct ApplicationSpecification
 	{
 		std::string Name = "Walnut App";
 		uint32_t Width = 1600;
 		uint32_t Height = 900;
+		bool CustomTitlebar = false;
 	};
 
 	class Application
@@ -33,7 +39,7 @@ namespace Walnut {
 
 		void Run();
 		void SetMenubarCallback(const std::function<void()>& menubarCallback) { m_MenubarCallback = menubarCallback; }
-		
+
 		template<typename T>
 		void PushLayer()
 		{
@@ -56,9 +62,13 @@ namespace Walnut {
 		static void FlushCommandBuffer(VkCommandBuffer commandBuffer);
 
 		static void SubmitResourceFree(std::function<void()>&& func);
+
+		/// Height of the custom titlebar in pixels (valid after first frame if CustomTitlebar is true).
+		float GetTitlebarHeight() const;
 	private:
 		void Init();
 		void Shutdown();
+
 	private:
 		ApplicationSpecification m_Specification;
 		GLFWwindow* m_WindowHandle = nullptr;
@@ -70,6 +80,9 @@ namespace Walnut {
 
 		std::vector<std::shared_ptr<Layer>> m_LayerStack;
 		std::function<void()> m_MenubarCallback;
+
+		// Custom titlebar
+		std::unique_ptr<Walnut::CustomTitlebar> m_CustomTitlebar;
 	};
 
 	// Implemented by CLIENT
