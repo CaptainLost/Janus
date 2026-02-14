@@ -1,0 +1,29 @@
+# Directories
+.vs/
+bin/
+bin-int/
+
+# Files
+*.vcxproj
+*.vcxproj.user
+*.vcxproj.filters
+*.sln
+imgui.ini
+
+# CEF binaries and build artifacts (exclude DLLs, EXEs, large binaries)
+vendor/cef/Debug/*.dll
+vendor/cef/Debug/*.exe
+vendor/cef/Debug/*.bin
+vendor/cef/Release/*.dll
+vendor/cef/Release/*.exe
+vendor/cef/Release/*.bin
+vendor/cef/Resources/
+vendor/cef/tests/
+vendor/cef/bin/
+vendor/cef/BUILD.bazel
+vendor/cef/WORKSPACE
+vendor/cef/Doxyfile
+vendor/cef/CREDITS.html
+
+# Exclude
+!vendor/bin
