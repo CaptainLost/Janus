@@ -22,8 +22,7 @@
 
 // Emedded font
 #include "ImGui/Roboto-Regular.embed"
-//#include "ImGui/Kingdom.embed"
-//#include "ImGui/HeartbitXX.embed"
+#include "ImGui/Kingdom.embed"
 
 extern bool g_ApplicationRunning;
 
@@ -421,10 +420,10 @@ namespace Walnut {
 
 		m_WindowHandle = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Name.c_str(), NULL, NULL);
 
-		// Create custom titlebar if enabled
+		// Create custom titlebar if enabled (font will be set later after ImGui initialization)
 		if (m_Specification.CustomTitlebar)
 		{
-			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name);
+			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name, nullptr);
 		}
 
 		// Setup Vulkan
@@ -500,12 +499,18 @@ namespace Walnut {
 		// Load Fonts
 		ImFontConfig fontConfig;
 		fontConfig.FontDataOwnedByAtlas = false;
+		fontConfig.PixelSnapH = false;
 
-		/*ImFont* kingdomFont = io.Fonts->AddFontFromMemoryTTF((void*)g_Kingdom, sizeof(g_Kingdom), 20.0f, &fontConfig);*/
+		ImFont* kingdomFont = io.Fonts->AddFontFromMemoryTTF((void*)g_Kingdom, sizeof(g_Kingdom), 20.0f, &fontConfig);
 		ImFont* robotoFont = io.Fonts->AddFontFromMemoryTTF((void*)g_RobotoRegular, sizeof(g_RobotoRegular), 18.0f, &fontConfig);
-		/*ImFont* heartbitXXFont = io.Fonts->AddFontFromMemoryTTF((void*)g_HeartbitXX, sizeof(g_HeartbitXX), 20.0f, &fontConfig);*/
 
 		io.FontDefault = robotoFont;
+
+		// Set kingdom font for custom titlebar if enabled
+		if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+		{
+			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name, kingdomFont);
+		}
 	}
 
 	void Application::Shutdown()

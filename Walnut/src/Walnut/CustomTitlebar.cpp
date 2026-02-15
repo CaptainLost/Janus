@@ -5,8 +5,8 @@
 
 namespace Walnut {
 
-	CustomTitlebar::CustomTitlebar(GLFWwindow* windowHandle, const std::string& title)
-		: m_WindowHandle(windowHandle), m_WindowTitle(title)
+	CustomTitlebar::CustomTitlebar(GLFWwindow* windowHandle, const std::string& title, ImFont* titleFont)
+		: m_WindowHandle(windowHandle), m_WindowTitle(title), m_TitleFont(titleFont)
 	{
 	}
 
@@ -56,11 +56,17 @@ namespace Walnut {
 
 		// ---- Window title in center ----
 		{
+			if (m_TitleFont)
+				ImGui::PushFont(m_TitleFont);
+
 			const char* title = m_WindowTitle.c_str();
 			const float titleTextWidth = ImGui::CalcTextSize(title).x;
 			const float titleX = (windowWidth - titleTextWidth) * 0.5f;
 			ImGui::SetCursorPos(ImVec2(titleX, (titlebarHeight - ImGui::GetFontSize()) * 0.5f));
 			ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%s", title);
+
+			if (m_TitleFont)
+				ImGui::PopFont();
 		}
 
 		// ---- Window control buttons (right side) ----

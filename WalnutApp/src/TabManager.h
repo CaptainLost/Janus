@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #include "BrowserTab.h"
 
 #include <algorithm>
@@ -12,7 +8,6 @@
 #include <string>
 #include <vector>
 
-/// Manages three collections of tabs: dynamic, permanent, and temporary.
 class TabManager
 {
 public:
@@ -25,14 +20,14 @@ public:
 	                  int viewW = 1280, int viewH = 720)
 	{
 		BrowserTab tab;
-		tab.ID        = m_NextID++;
-		tab.Kind      = TabKind::Dynamic;
+		tab.Id        = m_NextID++;
+		tab.Type      = TabType::Dynamic;
 		tab.StartURL  = url;
 		tab.ViewWidth = viewW;
 		tab.ViewHeight= viewH;
 		tab.Create();
 		m_DynamicTabs.push_back(std::move(tab));
-		m_ActiveTabID = m_DynamicTabs.back().ID;
+		m_ActiveTabID = m_DynamicTabs.back().Id;
 		return m_ActiveTabID;
 	}
 
@@ -41,14 +36,14 @@ public:
 	                    int viewW = 1280, int viewH = 720)
 	{
 		BrowserTab tab;
-		tab.ID        = m_NextID++;
-		tab.Kind      = TabKind::Permanent;
+		tab.Id        = m_NextID++;
+		tab.Type      = TabType::Permanent;
 		tab.StartURL  = url;
 		tab.ViewWidth = viewW;
 		tab.ViewHeight= viewH;
 		// Permanent tabs are listed but not necessarily opened immediately.
 		m_PermanentTabs.push_back(std::move(tab));
-		return m_PermanentTabs.back().ID;
+		return m_PermanentTabs.back().Id;
 	}
 
 	/// Create a new temporary tab (left sidebar, auto-expires).
@@ -58,8 +53,8 @@ public:
 	                    int viewW = 1280, int viewH = 720)
 	{
 		BrowserTab tab;
-		tab.ID        = m_NextID++;
-		tab.Kind      = TabKind::Temporary;
+		tab.Id        = m_NextID++;
+		tab.Type      = TabType::Temporary;
 		tab.StartURL  = url;
 		tab.ViewWidth = viewW;
 		tab.ViewHeight= viewH;
@@ -67,7 +62,7 @@ public:
 		              + std::chrono::duration_cast<std::chrono::steady_clock::duration>(
 		                    std::chrono::duration<double>(lifetimeSeconds));
 		m_TemporaryTabs.push_back(std::move(tab));
-		return m_TemporaryTabs.back().ID;
+		return m_TemporaryTabs.back().Id;
 	}
 
 	// ----- Tab access -------------------------------------------------------
@@ -86,9 +81,10 @@ public:
 
 	BrowserTab* FindTab(int id)
 	{
-		for (auto& t : m_DynamicTabs)   if (t.ID == id) return &t;
-		for (auto& t : m_PermanentTabs) if (t.ID == id) return &t;
-		for (auto& t : m_TemporaryTabs) if (t.ID == id) return &t;
+		for (auto& t : m_DynamicTabs)   if (t.Id == id) return &t;
+		for (auto& t : m_PermanentTabs) if (t.Id == id) return &t;
+		for (auto& t : m_TemporaryTabs) if (t.Id == id) return &t;
+
 		return nullptr;
 	}
 
@@ -125,7 +121,7 @@ public:
 	void RemoveDynamicTab(int id)
 	{
 		auto it = std::find_if(m_DynamicTabs.begin(), m_DynamicTabs.end(),
-		                       [id](auto& t){ return t.ID == id; });
+		                       [id](auto& t){ return t.Id == id; });
 		if (it != m_DynamicTabs.end())
 		{
 			it->Close();
@@ -139,7 +135,7 @@ public:
 	void RemovePermanentTab(int id)
 	{
 		auto it = std::find_if(m_PermanentTabs.begin(), m_PermanentTabs.end(),
-		                       [id](auto& t){ return t.ID == id; });
+		                       [id](auto& t){ return t.Id == id; });
 		if (it != m_PermanentTabs.end())
 		{
 			it->Close();
@@ -153,7 +149,7 @@ public:
 	void RemoveTemporaryTab(int id)
 	{
 		auto it = std::find_if(m_TemporaryTabs.begin(), m_TemporaryTabs.end(),
-		                       [id](auto& t){ return t.ID == id; });
+		                       [id](auto& t){ return t.Id == id; });
 		if (it != m_TemporaryTabs.end())
 		{
 			it->Close();
@@ -173,7 +169,7 @@ public:
 		{
 			if (it->Deadline <= now)
 			{
-				if (m_ActiveTabID == it->ID)
+				if (m_ActiveTabID == it->Id)
 					m_ActiveTabID = -1;
 				it->Close();
 				it = m_TemporaryTabs.erase(it);
@@ -208,9 +204,9 @@ private:
 	void PickNextActiveTab()
 	{
 		// Prefer open tabs.
-		for (auto& t : m_DynamicTabs)   if (t.IsOpen) { m_ActiveTabID = t.ID; return; }
-		for (auto& t : m_PermanentTabs) if (t.IsOpen) { m_ActiveTabID = t.ID; return; }
-		for (auto& t : m_TemporaryTabs) if (t.IsOpen) { m_ActiveTabID = t.ID; return; }
+		for (auto& t : m_DynamicTabs)   if (t.IsOpen) { m_ActiveTabID = t.Id; return; }
+		for (auto& t : m_PermanentTabs) if (t.IsOpen) { m_ActiveTabID = t.Id; return; }
+		for (auto& t : m_TemporaryTabs) if (t.IsOpen) { m_ActiveTabID = t.Id; return; }
 		m_ActiveTabID = -1;
 	}
 

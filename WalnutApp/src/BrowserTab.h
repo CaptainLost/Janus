@@ -1,9 +1,5 @@
 #pragma once
 
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #include "Walnut/Image.h"
 #include "Walnut/WebView.h"
 
@@ -14,8 +10,7 @@
 #include <string>
 #include <vector>
 
-/// Describes the persistence behaviour of a tab.
-enum class TabKind
+enum class TabType
 {
 	Dynamic,    // Top bar – vanishes when the app is closed
 	Permanent,  // Left sidebar – never removed automatically
@@ -26,8 +21,8 @@ enum class TabKind
 struct BrowserTab
 {
 	// Identity
-	int         ID        = 0;
-	TabKind     Kind      = TabKind::Dynamic;
+	int Id = 0;
+	TabType Type = TabType::Dynamic;
 	std::string StartURL  = "https://www.google.com";
 
 	// URL bar state
@@ -76,13 +71,14 @@ struct BrowserTab
 	{
 		if (WebView)
 			return WebView->GetState();
+
 		return {};
 	}
 
 	/// Returns remaining time in seconds for temporary tabs, or -1.
 	double GetRemainingSeconds() const
 	{
-		if (Kind != TabKind::Temporary)
+		if (Type != TabType::Temporary)
 			return -1.0;
 		auto now = std::chrono::steady_clock::now();
 		auto remaining = std::chrono::duration<double>(Deadline - now);

@@ -5,6 +5,7 @@
 #include "Walnut/WebView.h"
 
 #include "TabManager.h"
+#include "BrowserViewport.h"
 
 #include "include/cef_base.h"
 
@@ -21,9 +22,7 @@ public:
 
 private:
 	// Per-tab helpers
-	void UpdateBrowserImage(BrowserTab& tab);
 	void SyncURLFromBrowser(BrowserTab& tab);
-	void ForwardInputToBrowser(BrowserTab& tab);
 
 	// Layout
 	void BuildDockLayout();
@@ -31,12 +30,12 @@ private:
 	// UI sections
 	void RenderSidebar();
 	void RenderAddressBar();
-	void RenderBrowserViewport();
 
 	// Dialogs
 	void RenderNewTabPopup();
 
 	TabManager m_TabManager;
+	BrowserViewport m_Viewport;
 
 	// Dock layout
 	bool m_LayoutBuilt = false;

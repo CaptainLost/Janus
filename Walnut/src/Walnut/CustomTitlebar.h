@@ -5,13 +5,14 @@
 
 struct GLFWwindow;
 struct ImVec2;
+struct ImFont;
 
 namespace Walnut {
 
 	class CustomTitlebar
 	{
 	public:
-		CustomTitlebar(GLFWwindow* windowHandle, const std::string& title);
+		CustomTitlebar(GLFWwindow* windowHandle, const std::string& title, ImFont* titleFont = nullptr);
 		~CustomTitlebar() = default;
 
 		// Render the custom titlebar and handle all interaction logic
@@ -28,6 +29,7 @@ namespace Walnut {
 
 		GLFWwindow* m_WindowHandle = nullptr;
 		std::string m_WindowTitle;
+		ImFont* m_TitleFont = nullptr;
 
 		// Titlebar dimensions and state
 		float m_TitlebarHeight = 40.0f;
