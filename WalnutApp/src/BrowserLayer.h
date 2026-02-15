@@ -20,13 +20,15 @@ public:
 	void OnUIRender() override;
 
 private:
-	// Per-tab helpers (operate on active tab)
+	// Per-tab helpers
 	void UpdateBrowserImage(BrowserTab& tab);
 	void SyncURLFromBrowser(BrowserTab& tab);
 	void ForwardInputToBrowser(BrowserTab& tab);
 
+	// Layout
+	void BuildDockLayout();
+
 	// UI sections
-	void RenderTopTabBar();
 	void RenderSidebar();
 	void RenderAddressBar();
 	void RenderBrowserViewport();
@@ -35,6 +37,9 @@ private:
 	void RenderNewTabPopup();
 
 	TabManager m_TabManager;
+
+	// Dock layout
+	bool m_LayoutBuilt = false;
 
 	// Sidebar visibility
 	bool m_SidebarOpen = true;
