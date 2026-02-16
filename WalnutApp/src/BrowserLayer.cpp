@@ -1,5 +1,5 @@
-#define IMGUI_DEFINE_MATH_OPERATORS
 #include "BrowserLayer.h"
+#include "CefInputBridge.h"
 
 #include "include/cef_app.h"
 
@@ -8,41 +8,43 @@
 
 #include <algorithm>
 #include <cstring>
-#include <cstdio>
-
-// ============================================================================
-// Lifecycle
-// ============================================================================
 
 void BrowserLayer::OnAttach()
 {
-	m_TabManager.AddDynamicTab("https://www.google.com");
+	m_tabManager.AddTab();
+
+	m_viewport.SetDetachCallback(
+		[this](TabManager2& src, int tabId, ImVec2 mousePos)
+		{ OnTabDetachRequested(src, tabId, mousePos); });
 }
 
 void BrowserLayer::OnDetach()
 {
-	m_TabManager.CloseAll();
-}
+	for (auto& dv : m_detachedViewports)
+	{
+		dv->tabManager.CloseAll();
+	}
 
-// ============================================================================
-// Frame update
-// ============================================================================
+	m_detachedViewports.clear();
+	m_tabManager.CloseAll();
+}
 
 void BrowserLayer::OnUpdate(float ts)
 {
 	CefDoMessageLoopWork();
 
-	m_TabManager.PurgeExpiredTabs();
+	for (const auto& tab : m_tabManager.Tabs())
+	{
+		if (tab->GetState() != TabState::Blank)
+		{
+			m_viewport.UpdateBrowserImage(*tab);
+		}
+	}
 
-	for (auto& tab : m_TabManager.DynamicTabs())
-		if (tab.IsOpen) m_Viewport.UpdateBrowserImage(tab);
-	for (auto& tab : m_TabManager.PermanentTabs())
-		if (tab.IsOpen) m_Viewport.UpdateBrowserImage(tab);
-	for (auto& tab : m_TabManager.TemporaryTabs())
-		if (tab.IsOpen) m_Viewport.UpdateBrowserImage(tab);
-
-	if (auto* active = m_TabManager.GetActiveTab())
-		SyncURLFromBrowser(*active);
+	for (auto& dv : m_detachedViewports)
+		for (const auto& tab : dv->tabManager.Tabs())
+			if (tab->GetState() != TabState::Blank)
+				dv->viewport->UpdateBrowserImage(*tab);
 }
 
 void BrowserLayer::OnUIRender()
@@ -50,386 +52,202 @@ void BrowserLayer::OnUIRender()
 	ImGui::ShowDemoWindow();
 
 	BuildDockLayout();
-
 	RenderSidebar();
-	RenderAddressBar();
-	m_Viewport.Render(m_TabManager, m_NewTabURL);
-	RenderNewTabPopup();
+	RenderMainViewport();
+	RenderDetachedWindows();
 }
-
-// ============================================================================
-// Fixed Dock Layout (built once on startup)
-// ============================================================================
 
 void BrowserLayer::BuildDockLayout()
 {
-	if (m_LayoutBuilt)
+	if (m_layoutBuilt)
 		return;
 
-	ImGuiID dockspace_id = ImGui::GetID("VulkanAppDockspace");
+	ImGuiID dockspaceId = ImGui::GetID("VulkanAppDockspace");
 
-	// Always force-rebuild the layout to avoid stale imgui.ini placements
-	ImGui::DockBuilderRemoveNode(dockspace_id);
-	ImGui::DockBuilderAddNode(dockspace_id, ImGuiDockNodeFlags_DockSpace);
+	ImGui::DockBuilderRemoveNode(dockspaceId);
+	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
 
-	const ImGuiViewport* viewport = ImGui::GetMainViewport();
-	ImGui::DockBuilderSetNodeSize(dockspace_id, viewport->WorkSize);
+	const ImGuiViewport* vp = ImGui::GetMainViewport();
+	ImGui::DockBuilderSetNodeSize(dockspaceId, vp->WorkSize);
 
-	// Split: left sidebar (20%) | right remainder (80%)
 	ImGuiID dockLeft = 0, dockRight = 0;
-	ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.20f, &dockLeft, &dockRight);
+	ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.20f, &dockLeft, &dockRight);
 
-	// Split right: top navigation bar (~50px worth) | center browser viewport
-	ImGuiID dockTop = 0, dockCenter = 0;
-	ImGui::DockBuilderSplitNode(dockRight, ImGuiDir_Up, 0.1f, &dockTop, &dockCenter);
+	ImGui::DockBuilderDockWindow("##Sidebar",         dockLeft);
+	ImGui::DockBuilderDockWindow("##BrowserViewport", dockRight);
+	ImGui::DockBuilderFinish(dockspaceId);
 
-	// Dock our windows into their slots
-	ImGui::DockBuilderDockWindow("##Sidebar", dockLeft);
-	ImGui::DockBuilderDockWindow("##Navigation", dockTop);
-	ImGui::DockBuilderDockWindow("##BrowserViewport", dockCenter);
-
-	ImGui::DockBuilderFinish(dockspace_id);
-
-	// Configure nodes: hide tab bars, prevent undocking/resizing
-	auto LockNode = [](ImGuiID id) {
-		if (ImGuiDockNode* n = ImGui::DockBuilderGetNode(id))
-		{
+	auto lockNode = [](ImGuiID id)
+	{
+		if (auto* n = ImGui::DockBuilderGetNode(id))
 			n->LocalFlags |= ImGuiDockNodeFlags_NoTabBar
 			               |  ImGuiDockNodeFlags_NoDocking
 			               |  ImGuiDockNodeFlags_NoResize;
-		}
 	};
 
-	LockNode(dockLeft);
-	LockNode(dockTop);
-	LockNode(dockCenter);
-
-	m_LayoutBuilt = true;
+	lockNode(dockLeft);
+	lockNode(dockRight);
+	m_layoutBuilt = true;
 }
-
-// ============================================================================
-// Per-tab helpers
-// ============================================================================
-
-void BrowserLayer::SyncURLFromBrowser(BrowserTab& tab)
-{
-	if (tab.URLBarFocused || !tab.WebView)
-		return;
-
-	const auto state = tab.WebView->GetState();
-	if (!state.URL.empty())
-	{
-		std::strncpy(tab.URLBuffer, state.URL.c_str(), sizeof(tab.URLBuffer) - 1);
-		tab.URLBuffer[sizeof(tab.URLBuffer) - 1] = '\0';
-	}
-}
-
-// ============================================================================
-// Left Sidebar
-// ============================================================================
 
 void BrowserLayer::RenderSidebar()
 {
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoTitleBar;
+	ImGui::Begin("##Sidebar", nullptr,
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-	ImGui::Begin("##Sidebar", nullptr, flags);
-
-	if (ImGui::Button("+ New Tab", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
-		m_ShowNewTabPopup = true;
-
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	// ---- Dynamic tabs ----
-	ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Tabs");
-	ImGui::Separator();
-
-	int removeDynID = -1;
-	for (auto& tab : m_TabManager.DynamicTabs())
+	auto renderTabList = [](TabManager2& mgr, const char* sectionLabel)
 	{
-		ImGui::PushID(tab.Id);
+		if (mgr.Tabs().empty())
+			return;
 
-		Walnut::WebViewState state = tab.GetState();
-		std::string title = state.Title.empty() ? "New Tab" : state.Title;
-		if (title.size() > 25)
-			title = title.substr(0, 22) + "...";
-		if (state.IsLoading)
-			title = "[*] " + title;
-
-		bool isActive = (tab.Id == m_TabManager.GetActiveTabID());
-		if (isActive)
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-		if (ImGui::Button(title.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
-			m_TabManager.SetActiveTab(tab.Id);
-
-		if (isActive)
-			ImGui::PopStyleColor();
-
-		ImGui::SameLine();
-		if (ImGui::SmallButton("X"))
-			removeDynID = tab.Id;
-
-		ImGui::PopID();
-	}
-
-	if (removeDynID >= 0)
-		m_TabManager.RemoveDynamicTab(removeDynID);
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	// ---- Permanent tabs ----
-	ImGui::TextColored(ImVec4(0.9f, 0.8f, 0.2f, 1.0f), "Permanent");
-	ImGui::Separator();
-
-	int removePermID = -1;
-	for (auto& tab : m_TabManager.PermanentTabs())
-	{
-		ImGui::PushID(tab.Id);
-
-		auto state = tab.GetState();
-		std::string title = state.Title.empty() ? tab.StartURL : state.Title;
-		if (title.size() > 25)
-			title = title.substr(0, 22) + "...";
-
-		const char* icon = tab.IsOpen ? "[O]" : "[-]";
-		std::string label = std::string(icon) + " " + title;
-		if (tab.IsOpen && state.IsLoading)
-			label += " [*]";
-
-		bool isActive = (tab.Id == m_TabManager.GetActiveTabID());
-		if (isActive)
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-		if (ImGui::Button(label.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
-			m_TabManager.OpenTab(tab.Id);
-
-		if (isActive)
-			ImGui::PopStyleColor();
-
-		ImGui::SameLine();
-		if (ImGui::SmallButton("X"))
-			removePermID = tab.Id;
-
-		ImGui::PopID();
-	}
-
-	if (removePermID >= 0)
-		m_TabManager.RemovePermanentTab(removePermID);
-
-	if (ImGui::SmallButton("+ Permanent"))
-	{
-		m_ShowNewTabPopup = true;
-		m_NewTabKind = 1;
-	}
-
-	ImGui::Spacing();
-	ImGui::Separator();
-	ImGui::Spacing();
-
-	// ---- Temporary tabs ----
-	ImGui::TextColored(ImVec4(0.4f, 0.7f, 1.0f, 1.0f), "Temporary");
-	ImGui::Separator();
-
-	int removeTempID = -1;
-	for (auto& tab : m_TabManager.TemporaryTabs())
-	{
-		ImGui::PushID(tab.Id);
-
-		auto state = tab.GetState();
-		std::string title = state.Title.empty() ? tab.StartURL : state.Title;
-		if (title.size() > 20)
-			title = title.substr(0, 17) + "...";
-
-		const char* icon = tab.IsOpen ? "[O]" : "[-]";
-		std::string remaining = tab.GetRemainingTimeString();
-		std::string label = std::string(icon) + " " + title;
-		if (tab.IsOpen && state.IsLoading)
-			label += " [*]";
-		label += " (" + remaining + ")";
-
-		bool isActive = (tab.Id == m_TabManager.GetActiveTabID());
-		if (isActive)
-			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
-
-		if (ImGui::Button(label.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
-			m_TabManager.OpenTab(tab.Id);
-
-		if (isActive)
-			ImGui::PopStyleColor();
-
-		ImGui::SameLine();
-		if (ImGui::SmallButton("X"))
-			removeTempID = tab.Id;
-
-		ImGui::PopID();
-	}
-
-	if (removeTempID >= 0)
-		m_TabManager.RemoveTemporaryTab(removeTempID);
-
-	if (ImGui::SmallButton("+ Temporary"))
-	{
-		m_ShowNewTabPopup = true;
-		m_NewTabKind = 2;
-	}
-
-	ImGui::End();
-}
-
-// ============================================================================
-// Address / Navigation Bar
-// ============================================================================
-
-void BrowserLayer::RenderAddressBar()
-{
-	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoCollapse |
-		ImGuiWindowFlags_NoMove |
-		ImGuiWindowFlags_NoTitleBar |
-		ImGuiWindowFlags_NoScrollbar |
-		ImGuiWindowFlags_NoScrollWithMouse;
-
-	ImGui::Begin("##Navigation", nullptr, flags);
-
-	auto* tab = m_TabManager.GetActiveTab();
-
-	if (!tab || !tab->IsOpen)
-	{
-		ImGui::TextDisabled("No active tab");
-		ImGui::End();
-		return;
-	}
-
-	const auto state = tab->GetState();
-
-	// Back
-	ImGui::BeginDisabled(!state.CanGoBack);
-	if (ImGui::Button("<") && tab->WebView) tab->WebView->GoBack();
-	ImGui::EndDisabled();
-
-	ImGui::SameLine();
-
-	// Forward
-	ImGui::BeginDisabled(!state.CanGoForward);
-	if (ImGui::Button(">") && tab->WebView) tab->WebView->GoForward();
-	ImGui::EndDisabled();
-
-	ImGui::SameLine();
-
-	// Stop / Reload
-	if (state.IsLoading)
-	{
-		if (ImGui::Button("X") && tab->WebView) tab->WebView->StopLoading();
-	}
-	else
-	{
-		if (ImGui::Button("O") && tab->WebView) tab->WebView->Reload();
-	}
-
-	ImGui::SameLine();
-
-	// URL input
-	const float goWidth = ImGui::CalcTextSize("Go").x +
-	                      ImGui::GetStyle().ItemSpacing.x * 2 +
-	                      ImGui::GetStyle().FramePadding.x * 2;
-	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth);
-
-	const bool enterPressed = ImGui::InputText(
-		"##url", tab->URLBuffer, sizeof(tab->URLBuffer),
-		ImGuiInputTextFlags_EnterReturnsTrue);
-	tab->URLBarFocused = ImGui::IsItemActive();
-
-	ImGui::SameLine();
-
-	if ((enterPressed || ImGui::Button("Go")) && tab->WebView)
-		tab->WebView->Navigate(tab->URLBuffer);
-
-	ImGui::End();
-}
-
-// ============================================================================
-// "New Tab" Popup
-// ============================================================================
-
-void BrowserLayer::RenderNewTabPopup()
-{
-	if (!m_ShowNewTabPopup)
-		return;
-
-	ImGui::OpenPopup("New Tab");
-
-	ImVec2 center = ImGui::GetMainViewport()->GetCenter();
-	ImGui::SetNextWindowPos(center, ImGuiCond_Appearing, ImVec2(0.5f, 0.5f));
-	ImGui::SetNextWindowSize(ImVec2(450, 220), ImGuiCond_Appearing);
-
-	if (ImGui::BeginPopupModal("New Tab", &m_ShowNewTabPopup, ImGuiWindowFlags_AlwaysAutoResize))
-	{
-		ImGui::Text("Tab type:");
-		ImGui::RadioButton("Dynamic",   &m_NewTabKind, 0); ImGui::SameLine();
-		ImGui::RadioButton("Permanent", &m_NewTabKind, 1); ImGui::SameLine();
-		ImGui::RadioButton("Temporary", &m_NewTabKind, 2);
-
-		ImGui::Spacing();
-
-		ImGui::Text("URL:");
-		ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x);
-		ImGui::InputText("##newurl", m_NewTabURL, sizeof(m_NewTabURL));
-
-		if (m_NewTabKind == 2)
+		if (sectionLabel)
 		{
-			ImGui::Spacing();
-			ImGui::Text("Lifetime (hours):");
-			ImGui::SetNextItemWidth(150);
-			ImGui::InputFloat("##lifetime", &m_NewTabLifetimeHours, 1.0f, 6.0f, "%.1f");
-			if (m_NewTabLifetimeHours < 0.01f) m_NewTabLifetimeHours = 0.01f;
+			ImGui::TextColored(ImVec4(0.7f, 0.7f, 0.7f, 1.0f), "%s", sectionLabel);
+			ImGui::Separator();
 		}
 
+		int removeId = -1;
+		for (const auto& tabPtr : mgr.Tabs())
+		{
+			auto& tab = *tabPtr;
+			ImGui::PushID(&tab);
+
+			std::string title;
+			if (tab.GetState() == TabState::Blank)
+			{
+				title = "New Tab";
+			}
+			else
+			{
+				auto state = tab.GetWebViewState();
+				title = state.Title.empty() ? "Loading..." : state.Title;
+				if (title.size() > 25)
+					title = title.substr(0, 22) + "...";
+				if (state.IsLoading)
+					title = "[*] " + title;
+			}
+
+			bool isActive = (tab.GetId() == mgr.GetActiveTabId());
+			if (isActive)
+				ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+
+			if (ImGui::Button(title.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
+				mgr.SetActiveTab(tab.GetId());
+
+			if (isActive)
+				ImGui::PopStyleColor();
+
+			ImGui::SameLine();
+			if (ImGui::SmallButton("X"))
+				removeId = tab.GetId();
+
+			ImGui::PopID();
+		}
+
+		if (removeId >= 0)
+			mgr.RemoveTab(removeId);
+	};
+
+	ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Main");
+	ImGui::Separator();
+	renderTabList(m_tabManager, nullptr);
+
+	ImGui::Spacing();
+	if (ImGui::Button("+ New Tab", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+		m_tabManager.AddTab();
+
+	for (int i = 0; i < static_cast<int>(m_detachedViewports.size()); ++i)
+	{
 		ImGui::Spacing();
 		ImGui::Separator();
 		ImGui::Spacing();
 
-		if (ImGui::Button("Create", ImVec2(120, 0)))
-		{
-			switch (m_NewTabKind)
-			{
-			case 0:
-				m_TabManager.AddDynamicTab(m_NewTabURL);
-				break;
-			case 1:
-			{
-				int id = m_TabManager.AddPermanentTab(m_NewTabURL);
-				m_TabManager.OpenTab(id);
-				break;
-			}
-			case 2:
-			{
-				double secs = static_cast<double>(m_NewTabLifetimeHours) * 3600.0;
-				int id = m_TabManager.AddTemporaryTab(m_NewTabURL, secs);
-				m_TabManager.OpenTab(id);
-				break;
-			}
-			}
-
-			std::strncpy(m_NewTabURL, "https://www.google.com", sizeof(m_NewTabURL));
-			m_NewTabLifetimeHours = 24.0f;
-			m_ShowNewTabPopup = false;
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::SameLine();
-
-		if (ImGui::Button("Cancel", ImVec2(120, 0)))
-		{
-			m_ShowNewTabPopup = false;
-			ImGui::CloseCurrentPopup();
-		}
-
-		ImGui::EndPopup();
+		std::string label = "Window " + std::to_string(i + 1);
+		renderTabList(m_detachedViewports[i]->tabManager, label.c_str());
 	}
+
+	ImGui::End();
+}
+
+void BrowserLayer::RenderMainViewport()
+{
+	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
+	ImGui::Begin("##BrowserViewport", nullptr,
+		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove |
+		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
+		ImGuiWindowFlags_NoScrollWithMouse);
+
+	m_viewport.Render(m_tabManager);
+
+	ImGui::End();
+	ImGui::PopStyleVar();
+}
+
+void BrowserLayer::RenderDetachedWindows()
+{
+	for (auto it = m_detachedViewports.begin(); it != m_detachedViewports.end(); )
+	{
+		auto& dv = **it;
+
+		if (!dv.tabManager.HasAnyTab())
+		{
+			it = m_detachedViewports.erase(it);
+			continue;
+		}
+
+		std::string windowTitle = "Browser";
+		if (auto* activeTab = dv.tabManager.GetActiveTab())
+		{
+			if (activeTab->GetState() != TabState::Blank)
+			{
+				auto state = activeTab->GetWebViewState();
+				if (!state.Title.empty())
+					windowTitle = state.Title;
+			}
+		}
+
+		// ### keeps ImGui window identity stable while title changes
+		int idx = static_cast<int>(it - m_detachedViewports.begin());
+		windowTitle += "###detached_" + std::to_string(idx);
+
+		ImGui::SetNextWindowSize(ImVec2(900, 650), ImGuiCond_Appearing);
+
+		if (ImGui::Begin(windowTitle.c_str(), &dv.open,
+			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
+		{
+			dv.viewport->Render(dv.tabManager);
+		}
+		ImGui::End();
+
+		if (!dv.open)
+		{
+			dv.tabManager.CloseAll();
+			it = m_detachedViewports.erase(it);
+		}
+		else
+		{
+			++it;
+		}
+	}
+}
+
+void BrowserLayer::OnTabDetachRequested(TabManager2& srcManager, int tabId, ImVec2 mousePos)
+{
+	auto tab = srcManager.DetachTab(tabId);
+	if (!tab)
+		return;
+
+	auto dv = std::make_unique<DetachedViewport>();
+	std::string vpId = "detached_" + std::to_string(m_nextDetachedId++);
+	dv->viewport = std::make_unique<BrowserViewport>(vpId);
+	dv->open = true;
+
+	dv->viewport->SetDetachCallback(
+		[this](TabManager2& src, int id, ImVec2 pos)
+		{ OnTabDetachRequested(src, id, pos); });
+
+	dv->tabManager.AcceptTab(std::move(tab));
+	ImGui::SetNextWindowPos(mousePos, ImGuiCond_Appearing);
+
+	m_detachedViewports.push_back(std::move(dv));
 }

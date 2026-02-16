@@ -27,6 +27,7 @@ project "WalnutApp"
    defines
    {
       "USING_CEF_SHARED",
+      "IMGUI_DEFINE_MATH_OPERATORS",
       "NOMINMAX",
       "WIN32_LEAN_AND_MEAN",
    }

@@ -1,30 +1,53 @@
 #pragma once
 
-#include "BrowserTab.h"
-#include "TabManager.h"
+#include "Tabs/TabManager2.h"
 
+#include "imgui.h"
+
+#include <functional>
 #include <string>
 
-/// Handles rendering and interaction with the browser viewport.
+// Forward declaration.
+class BrowserViewport;
+
+/// Global drag state shared between all BrowserViewport instances.
+/// Only one tab can be dragged at a time.
+struct TabDragState
+{
+	bool             active     = false;
+	int              tabId      = -1;
+	TabManager2*     srcManager = nullptr;
+	BrowserViewport* srcViewport = nullptr;
+
+	void Clear() { active = false; tabId = -1; srcManager = nullptr; srcViewport = nullptr; }
+};
+
 class BrowserViewport
 {
 public:
-	BrowserViewport() = default;
+	explicit BrowserViewport(const std::string& uniqueId = "main");
 
-	/// Renders the main browser viewport window with tab bar.
-	/// Returns true if the viewport was rendered successfully.
-	void Render(TabManager& tabManager, const std::string& newTabURL);
+	void Render(TabManager2& tabManager);
+	void UpdateBrowserImage(BrowserTab2& tab);
 
-	/// Updates the browser image for a given tab.
-	void UpdateBrowserImage(BrowserTab& tab);
+	using DetachCallback = std::function<void(TabManager2&, int, ImVec2)>;
+	void SetDetachCallback(DetachCallback cb);
 
-	/// Forwards input events (mouse, keyboard) to the browser.
-	void ForwardInputToBrowser(BrowserTab& tab);
+	static int StringResizeCallback(ImGuiInputTextCallbackData* data);
+
+	/// Global drag state — shared across all viewports.
+	static TabDragState s_dragState;
 
 private:
-	/// Renders the tab bar at the top of the viewport.
-	void RenderTabBar(TabManager& tabManager, const std::string& newTabURL);
+	void RenderAddressBar(TabManager2& tabManager);
+	void RenderTabBar(TabManager2& tabManager);
+	void RenderTabContent(BrowserTab2& tab);
+	void RenderBrowserContent(BrowserTab2& tab);
+	void ForwardInputToBrowser(BrowserTab2& tab, ImVec2 imagePos);
+	void RenderDragOverlay();
 
-	/// Renders the actual browser content for the active tab.
-	void RenderBrowserContent(BrowserTab* activeTab);
+	std::string    m_uniqueId;
+	int            m_pendingSelectTabId = -1;
+	bool           m_urlBarFocused      = false;
+	DetachCallback m_detachCallback;
 };

@@ -1,16 +1,13 @@
 #pragma once
 
 #include "Walnut/Layer.h"
-#include "Walnut/Image.h"
-#include "Walnut/WebView.h"
 
-#include "TabManager.h"
+#include "Tabs/TabManager2.h"
 #include "BrowserViewport.h"
-
-#include "include/cef_base.h"
 
 #include <memory>
 #include <string>
+#include <vector>
 
 class BrowserLayer : public Walnut::Layer
 {
@@ -21,31 +18,23 @@ public:
 	void OnUIRender() override;
 
 private:
-	// Per-tab helpers
-	void SyncURLFromBrowser(BrowserTab& tab);
-
-	// Layout
 	void BuildDockLayout();
-
-	// UI sections
 	void RenderSidebar();
-	void RenderAddressBar();
+	void RenderMainViewport();
+	void RenderDetachedWindows();
+	void OnTabDetachRequested(TabManager2& srcManager, int tabId, ImVec2 mousePos);
 
-	// Dialogs
-	void RenderNewTabPopup();
+	TabManager2     m_tabManager;
+	BrowserViewport m_viewport{"main"};
 
-	TabManager m_TabManager;
-	BrowserViewport m_Viewport;
+	struct DetachedViewport
+	{
+		TabManager2                      tabManager;
+		std::unique_ptr<BrowserViewport> viewport;
+		bool                             open = true;
+	};
+	std::vector<std::unique_ptr<DetachedViewport>> m_detachedViewports;
+	int m_nextDetachedId = 0;
 
-	// Dock layout
-	bool m_LayoutBuilt = false;
-
-	// Sidebar visibility
-	bool m_SidebarOpen = true;
-
-	// "New Tab" dialog state
-	bool   m_ShowNewTabPopup      = false;
-	int    m_NewTabKind           = 0;  // 0=Dynamic, 1=Permanent, 2=Temporary
-	char   m_NewTabURL[2048]      = "https://www.google.com";
-	float  m_NewTabLifetimeHours  = 24.0f;
+	bool m_layoutBuilt = false;
 };

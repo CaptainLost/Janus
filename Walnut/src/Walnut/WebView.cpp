@@ -1,7 +1,3 @@
-#ifndef NOMINMAX
-#define NOMINMAX
-#endif
-
 #include "Walnut/WebView.h"
 
 #include "include/cef_app.h"
