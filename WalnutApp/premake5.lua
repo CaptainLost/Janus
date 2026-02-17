@@ -17,6 +17,7 @@ project "WalnutApp"
       "%{IncludeDir.VulkanSDK}",
       "%{IncludeDir.glm}",
       "%{IncludeDir.CEF}",
+      "%{IncludeDir.IconFontCppHeaders}",
    }
 
     links

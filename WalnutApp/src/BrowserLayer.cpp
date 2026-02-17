@@ -5,27 +5,18 @@
 
 #include "imgui.h"
 #include "imgui_internal.h"
+#include "IconsFontAwesome6.h"
 
 #include <algorithm>
 #include <cstring>
 
 void BrowserLayer::OnAttach()
 {
-	m_tabManager.AddTab();
 
-	m_viewport.SetDetachCallback(
-		[this](TabManager2& src, int tabId, ImVec2 mousePos)
-		{ OnTabDetachRequested(src, tabId, mousePos); });
 }
 
 void BrowserLayer::OnDetach()
 {
-	for (auto& dv : m_detachedViewports)
-	{
-		dv->tabManager.CloseAll();
-	}
-
-	m_detachedViewports.clear();
 	m_tabManager.CloseAll();
 }
 
@@ -40,11 +31,6 @@ void BrowserLayer::OnUpdate(float ts)
 			m_viewport.UpdateBrowserImage(*tab);
 		}
 	}
-
-	for (auto& dv : m_detachedViewports)
-		for (const auto& tab : dv->tabManager.Tabs())
-			if (tab->GetState() != TabState::Blank)
-				dv->viewport->UpdateBrowserImage(*tab);
 }
 
 void BrowserLayer::OnUIRender()
@@ -54,7 +40,6 @@ void BrowserLayer::OnUIRender()
 	BuildDockLayout();
 	RenderSidebar();
 	RenderMainViewport();
-	RenderDetachedWindows();
 }
 
 void BrowserLayer::BuildDockLayout()
@@ -79,8 +64,8 @@ void BrowserLayer::BuildDockLayout()
 
 	auto lockNode = [](ImGuiID id)
 	{
-		if (auto* n = ImGui::DockBuilderGetNode(id))
-			n->LocalFlags |= ImGuiDockNodeFlags_NoTabBar
+		if (ImGuiDockNode* dockNode = ImGui::DockBuilderGetNode(id))
+			dockNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar
 			               |  ImGuiDockNodeFlags_NoDocking
 			               |  ImGuiDockNodeFlags_NoResize;
 	};
@@ -115,16 +100,16 @@ void BrowserLayer::RenderSidebar()
 			std::string title;
 			if (tab.GetState() == TabState::Blank)
 			{
-				title = "New Tab";
+				title = ICON_FA_FILE " New Tab";
 			}
 			else
 			{
 				auto state = tab.GetWebViewState();
-				title = state.Title.empty() ? "Loading..." : state.Title;
-				if (title.size() > 25)
-					title = title.substr(0, 22) + "...";
+				title = state.Title.empty() ? ICON_FA_SPINNER " Loading..." : ICON_FA_GLOBE " " + state.Title;
+				if (title.size() > 30)
+					title = title.substr(0, 27) + "...";
 				if (state.IsLoading)
-					title = "[*] " + title;
+					title = ICON_FA_SPINNER " " + title;
 			}
 
 			bool isActive = (tab.GetId() == mgr.GetActiveTabId());
@@ -138,7 +123,7 @@ void BrowserLayer::RenderSidebar()
 				ImGui::PopStyleColor();
 
 			ImGui::SameLine();
-			if (ImGui::SmallButton("X"))
+			if (ImGui::SmallButton(ICON_FA_XMARK))
 				removeId = tab.GetId();
 
 			ImGui::PopID();
@@ -153,18 +138,8 @@ void BrowserLayer::RenderSidebar()
 	renderTabList(m_tabManager, nullptr);
 
 	ImGui::Spacing();
-	if (ImGui::Button("+ New Tab", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+	if (ImGui::Button(ICON_FA_PLUS " New Tab", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
 		m_tabManager.AddTab();
-
-	for (int i = 0; i < static_cast<int>(m_detachedViewports.size()); ++i)
-	{
-		ImGui::Spacing();
-		ImGui::Separator();
-		ImGui::Spacing();
-
-		std::string label = "Window " + std::to_string(i + 1);
-		renderTabList(m_detachedViewports[i]->tabManager, label.c_str());
-	}
 
 	ImGui::End();
 }
@@ -181,73 +156,4 @@ void BrowserLayer::RenderMainViewport()
 
 	ImGui::End();
 	ImGui::PopStyleVar();
-}
-
-void BrowserLayer::RenderDetachedWindows()
-{
-	for (auto it = m_detachedViewports.begin(); it != m_detachedViewports.end(); )
-	{
-		auto& dv = **it;
-
-		if (!dv.tabManager.HasAnyTab())
-		{
-			it = m_detachedViewports.erase(it);
-			continue;
-		}
-
-		std::string windowTitle = "Browser";
-		if (auto* activeTab = dv.tabManager.GetActiveTab())
-		{
-			if (activeTab->GetState() != TabState::Blank)
-			{
-				auto state = activeTab->GetWebViewState();
-				if (!state.Title.empty())
-					windowTitle = state.Title;
-			}
-		}
-
-		// ### keeps ImGui window identity stable while title changes
-		int idx = static_cast<int>(it - m_detachedViewports.begin());
-		windowTitle += "###detached_" + std::to_string(idx);
-
-		ImGui::SetNextWindowSize(ImVec2(900, 650), ImGuiCond_Appearing);
-
-		if (ImGui::Begin(windowTitle.c_str(), &dv.open,
-			ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoCollapse))
-		{
-			dv.viewport->Render(dv.tabManager);
-		}
-		ImGui::End();
-
-		if (!dv.open)
-		{
-			dv.tabManager.CloseAll();
-			it = m_detachedViewports.erase(it);
-		}
-		else
-		{
-			++it;
-		}
-	}
-}
-
-void BrowserLayer::OnTabDetachRequested(TabManager2& srcManager, int tabId, ImVec2 mousePos)
-{
-	auto tab = srcManager.DetachTab(tabId);
-	if (!tab)
-		return;
-
-	auto dv = std::make_unique<DetachedViewport>();
-	std::string vpId = "detached_" + std::to_string(m_nextDetachedId++);
-	dv->viewport = std::make_unique<BrowserViewport>(vpId);
-	dv->open = true;
-
-	dv->viewport->SetDetachCallback(
-		[this](TabManager2& src, int id, ImVec2 pos)
-		{ OnTabDetachRequested(src, id, pos); });
-
-	dv->tabManager.AcceptTab(std::move(tab));
-	ImGui::SetNextWindowPos(mousePos, ImGuiCond_Appearing);
-
-	m_detachedViewports.push_back(std::move(dv));
 }

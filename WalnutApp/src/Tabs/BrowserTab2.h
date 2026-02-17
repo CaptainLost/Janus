@@ -32,6 +32,8 @@ public:
 	std::string&       GetUrlInput();
 	const std::string& GetUrlInput() const;
 
+	std::string GetTabLabel() const;
+
 private:
 	int      m_id    = -1;
 	TabState m_state = TabState::Blank;

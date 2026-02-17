@@ -9,7 +9,6 @@ class TabManager2
 {
 public:
 	int AddTab();
-	int AddTab(const std::string& url);
 
 	/// Insert an existing tab without closing it. Returns its id.
 	int AcceptTab(std::shared_ptr<BrowserTab2> tab);
@@ -21,10 +20,12 @@ public:
 	void CloseAll();
 
 	void         SetActiveTab(int id);
+
+	BrowserTab2* GetTab(int id);
+
 	int          GetActiveTabId() const;
 	BrowserTab2* GetActiveTab();
 
-	BrowserTab2*                                     FindTab(int id);
 	const std::vector<std::shared_ptr<BrowserTab2>>& Tabs() const;
 	bool                                             HasAnyTab() const;
 

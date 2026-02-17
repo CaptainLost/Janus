@@ -79,3 +79,15 @@ Walnut::WebViewState BrowserTab2::GetWebViewState() const
 
 std::string&       BrowserTab2::GetUrlInput()       { return m_urlInput; }
 const std::string& BrowserTab2::GetUrlInput() const { return m_urlInput; }
+
+std::string BrowserTab2::GetTabLabel() const
+{
+	Walnut::WebViewState viewState = GetWebViewState();
+
+	std::string label = "";
+	label += viewState.Title;
+	label += "Tab ";
+	label += std::to_string(m_id);
+
+	return label;
+}

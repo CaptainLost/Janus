@@ -2,6 +2,7 @@
 
 #include "imgui.h"
 #include <GLFW/glfw3.h>
+#include <IconsFontAwesome6.h>
 
 namespace Walnut {
 
@@ -80,7 +81,7 @@ namespace Walnut {
 		ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.0f, 0.0f, 0.0f, 0.0f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.5f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 0.5f));
-		if (ImGui::Button("  _  ##min", ImVec2(buttonWidth, titlebarHeight)))
+		if (ImGui::Button(ICON_FA_WINDOW_MINIMIZE "##min", ImVec2(buttonWidth, titlebarHeight)))
 		{
 			glfwIconifyWindow(m_WindowHandle);
 		}
@@ -92,7 +93,7 @@ namespace Walnut {
 		ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.3f, 0.3f, 0.3f, 0.5f));
 		ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4(0.4f, 0.4f, 0.4f, 0.5f));
 		const bool isMaximized = glfwGetWindowAttrib(m_WindowHandle, GLFW_MAXIMIZED) != 0;
-		if (ImGui::Button(isMaximized ? " [ ] ##max" : " [  ] ##max", ImVec2(buttonWidth, titlebarHeight)))
+		if (ImGui::Button(isMaximized ? ICON_FA_WINDOW_RESTORE " ##max" : ICON_FA_WINDOW_MAXIMIZE " ##max", ImVec2(buttonWidth, titlebarHeight)))
 		{
 			if (isMaximized)
 				glfwRestoreWindow(m_WindowHandle);

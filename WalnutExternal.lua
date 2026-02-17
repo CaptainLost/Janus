@@ -6,6 +6,7 @@ IncludeDir = {}
 IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
 IncludeDir["glm"] = "../vendor/glm"
 IncludeDir["CEF"] = "../vendor/cef"
+IncludeDir["IconFontCppHeaders"] = "../vendor/IconFontCppHeaders"
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"
