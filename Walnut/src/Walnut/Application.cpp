@@ -337,18 +337,26 @@ static void CleanupVulkanWindow()
 	ImGui_ImplVulkanH_DestroyWindow(g_Instance, g_Device, &g_MainWindowData, g_Allocator);
 }
 
+static VkFence s_SemaphoreFences[16] = {};
+
 static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 {
 	VkResult err;
 
 	VkSemaphore image_acquired_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].ImageAcquiredSemaphore;
 	VkSemaphore render_complete_semaphore = wd->FrameSemaphores[wd->SemaphoreIndex].RenderCompleteSemaphore;
+
+	if (s_SemaphoreFences[wd->SemaphoreIndex] != VK_NULL_HANDLE)
+		vkWaitForFences(g_Device, 1, &s_SemaphoreFences[wd->SemaphoreIndex], VK_TRUE, UINT64_MAX);
+
 	err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
-	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
+	if (err == VK_ERROR_OUT_OF_DATE_KHR)
 	{
 		g_SwapChainRebuild = true;
 		return;
 	}
+	if (err == VK_SUBOPTIMAL_KHR)
+		g_SwapChainRebuild = true;
 	check_vk_result(err);
 
 	s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % g_MainWindowData.ImageCount;
@@ -419,6 +427,7 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 		check_vk_result(err);
 		err = vkQueueSubmit(g_Queue, 1, &info, fd->Fence);
 		check_vk_result(err);
+		s_SemaphoreFences[wd->SemaphoreIndex] = fd->Fence;
 	}
 }
 
@@ -658,6 +667,7 @@ namespace Walnut {
 					// Clear allocated command buffers from here since entire pool is destroyed
 					s_AllocatedCommandBuffers.clear();
 					s_AllocatedCommandBuffers.resize(g_MainWindowData.ImageCount);
+					memset(s_SemaphoreFences, 0, sizeof(s_SemaphoreFences));
 
 					g_SwapChainRebuild = false;
 				}
