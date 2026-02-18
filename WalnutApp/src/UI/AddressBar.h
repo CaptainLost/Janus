@@ -13,6 +13,7 @@ public:
 	AddressBar() = default;
 
 	void Render(TabManager2& tabManager);
+	void RenderForTab(BrowserTab2* tab);
 
 	bool IsUrlBarFocused() const { return m_urlBarFocused; }
 
@@ -20,7 +21,7 @@ public:
 
 private:
 	void RenderNavigationButtons(BrowserTab2* tab);
-	void RenderUrlInput(BrowserTab2* tab);
+	void RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused);
 	void HandleUrlSubmission(BrowserTab2* tab, const std::string& url);
 
 	bool m_urlBarFocused = false;

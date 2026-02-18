@@ -15,7 +15,20 @@ void AddressBar::Render(TabManager2& tabManager)
 
 	RenderNavigationButtons(tab);
 	ImGui::SameLine();
-	RenderUrlInput(tab);
+	RenderUrlInput(tab, m_urlBarFocused);
+}
+
+void AddressBar::RenderForTab(BrowserTab2* tab)
+{
+	if (!tab)
+		return;
+
+	ImGui::PushID(tab->GetId());
+	bool localFocused = false;
+	RenderNavigationButtons(tab);
+	ImGui::SameLine();
+	RenderUrlInput(tab, localFocused);
+	ImGui::PopID();
 }
 
 void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
@@ -61,7 +74,7 @@ void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 	}
 }
 
-void AddressBar::RenderUrlInput(BrowserTab2* tab)
+void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 {
 	bool hasWebView = tab->GetState() != TabState::Blank;
 	Walnut::WebViewState state;
@@ -80,7 +93,7 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab)
 		url.reserve(2048);
 
 	// Update URL from WebView state if not focused
-	if (hasWebView && !m_urlBarFocused && !state.URL.empty())
+	if (hasWebView && !urlBarFocused && !state.URL.empty())
 		url = state.URL;
 
 	// Calculate width for URL input
@@ -98,7 +111,7 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab)
 		StringResizeCallback,
 		&url);
 
-	m_urlBarFocused = ImGui::IsItemActive();
+	urlBarFocused = ImGui::IsItemActive();
 	url.resize(std::strlen(url.c_str()));
 
 	ImGui::SameLine();

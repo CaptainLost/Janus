@@ -20,8 +20,6 @@ void BrowserViewport::Render(TabManager2& tabManager)
 {
 	ImGui::PushID(m_uniqueId.c_str());
 
-	m_addressBar.Render(tabManager);
-	ImGui::Separator();
 	RenderTabBar(tabManager);
 
 	ImGui::PopID();
@@ -77,10 +75,13 @@ void BrowserViewport::RenderTabBar(TabManager2& tabManager)
 
 		if (ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoCollapse))
 		{
-			if (activeTabId != tab->GetId())
+			if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && activeTabId != tab->GetId())
 			{
 				tabManager.SetActiveTab(tab->GetId());
 			}
+
+			m_addressBar.RenderForTab(tab.get());
+			ImGui::Separator();
 
 			RenderTabContent(*tab);
 		}
