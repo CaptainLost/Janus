@@ -33,18 +33,18 @@ void AddressBar::RenderForTab(BrowserTab2* tab)
 
 void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 {
-	bool hasWebView = tab->GetState() != TabState::Blank;
+	bool isOpen = tab->IsOpen();
 	Walnut::WebViewState state;
 	CefRefPtr<Walnut::WebView> webView;
 
-	if (hasWebView)
+	if (isOpen)
 	{
 		state = tab->GetWebViewState();
 		webView = tab->GetWebView();
 	}
 
 	// Back button
-	ImGui::BeginDisabled(!hasWebView || !state.CanGoBack);
+	ImGui::BeginDisabled(!isOpen || !state.CanGoBack);
 	if (ImGui::Button(ICON_FA_ANGLE_LEFT "##navigationPrevious") && webView)
 		webView->GoBack();
 	ImGui::EndDisabled();
@@ -52,7 +52,7 @@ void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 	ImGui::SameLine();
 
 	// Forward button
-	ImGui::BeginDisabled(!hasWebView || !state.CanGoForward);
+	ImGui::BeginDisabled(!isOpen || !state.CanGoForward);
 	if (ImGui::Button(ICON_FA_ANGLE_RIGHT "##navigationNext") && webView)
 		webView->GoForward();
 	ImGui::EndDisabled();
@@ -60,14 +60,14 @@ void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 	ImGui::SameLine();
 
 	// Stop/Reload button
-	if (hasWebView && state.IsLoading)
+	if (isOpen && state.IsLoading)
 	{
 		if (ImGui::Button("X") && webView)
 			webView->StopLoading();
 	}
 	else
 	{
-		ImGui::BeginDisabled(!hasWebView);
+		ImGui::BeginDisabled(!isOpen);
 		if (ImGui::Button(ICON_FA_ROTATE_RIGHT "##refresh") && webView)
 			webView->Reload();
 		ImGui::EndDisabled();
@@ -76,15 +76,11 @@ void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 
 void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 {
-	bool hasWebView = tab->GetState() != TabState::Blank;
+	bool isOpen = tab->IsOpen();
 	Walnut::WebViewState state;
-	CefRefPtr<Walnut::WebView> webView;
 
-	if (hasWebView)
-	{
+	if (isOpen)
 		state = tab->GetWebViewState();
-		webView = tab->GetWebView();
-	}
 
 	ImGui::SameLine();
 
@@ -93,7 +89,7 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 		url.reserve(2048);
 
 	// Update URL from WebView state if not focused
-	if (hasWebView && !urlBarFocused && !state.URL.empty())
+	if (isOpen && !urlBarFocused && !state.URL.empty())
 		url = state.URL;
 
 	// Calculate width for URL input
@@ -119,21 +115,8 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 	// Go button
 	bool goPressed = ImGui::Button(ICON_FA_PLAY "##goLabel");
 
-	// Handle URL submission
+	// Handle URL submission — Open() handles both new and existing WebView
 	if ((enterPressed || goPressed) && !url.empty())
-	{
-		HandleUrlSubmission(tab, url);
-	}
-}
-
-void AddressBar::HandleUrlSubmission(BrowserTab2* tab, const std::string& url)
-{
-	bool hasWebView = tab->GetState() != TabState::Blank;
-	auto webView = tab->GetWebView();
-
-	if (hasWebView && webView)
-		tab->NavigateToUrl(url);
-	else
 		tab->Open(url);
 }
 

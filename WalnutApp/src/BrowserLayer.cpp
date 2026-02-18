@@ -26,7 +26,7 @@ void BrowserLayer::OnUpdate(float ts)
 
 	for (const auto& tab : m_tabManager.Tabs())
 	{
-		if (tab->GetState() != TabState::Blank)
+		if (tab->IsOpen())
 		{
 			m_viewport.UpdateBrowserImage(*tab);
 		}
@@ -98,7 +98,7 @@ void BrowserLayer::RenderSidebar()
 			ImGui::PushID(&tab);
 
 			std::string title;
-			if (tab.GetState() == TabState::Blank)
+			if (!tab.IsOpen())
 			{
 				title = ICON_FA_FILE " New Tab";
 			}

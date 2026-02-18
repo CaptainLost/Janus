@@ -73,7 +73,7 @@ void BrowserViewport::RenderTabBar(TabManager2& tabManager)
 
 		std::string windowTitle = ICON_FA_FILE " " + tab->GetTabLabel() + "###TabWindow_" + std::to_string(tab->GetId());
 
-		if (ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoCollapse))
+		if (ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoCollapse))
 		{
 			if (ImGui::IsWindowFocused(ImGuiFocusedFlags_RootAndChildWindows) && activeTabId != tab->GetId())
 			{
@@ -100,7 +100,7 @@ void BrowserViewport::RenderTabBar(TabManager2& tabManager)
 
 void BrowserViewport::RenderTabContent(BrowserTab2& tab)
 {
-	if (tab.GetState() == TabState::Blank)
+	if (!tab.IsOpen())
 		return;
 
 	RenderBrowserContent(tab);

@@ -1,7 +1,5 @@
 #pragma once
 
-#include "TabState.h"
-
 #include "Walnut/Image.h"
 #include "Walnut/WebView.h"
 
@@ -13,8 +11,8 @@ class BrowserTab2
 public:
 	explicit BrowserTab2(int id);
 
-	int      GetId()    const;
-	TabState GetState() const;
+	int  GetId()   const;
+	bool IsOpen()  const;
 
 	void Open(const std::string& url);
 	void Close();
@@ -35,8 +33,7 @@ public:
 	std::string GetTabLabel() const;
 
 private:
-	int      m_id    = -1;
-	TabState m_state = TabState::Blank;
+	int m_id = -1;
 
 	std::string m_urlInput;
 
