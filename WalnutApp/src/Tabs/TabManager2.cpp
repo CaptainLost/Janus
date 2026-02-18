@@ -64,8 +64,6 @@ void TabManager2::RemoveTab(int id)
 
 	if (m_activeTabId == id)
 		PickNextActiveTab();
-
-	printf("Removing %i\n", id);
 }
 
 void TabManager2::CloseAll()
@@ -79,8 +77,6 @@ void TabManager2::CloseAll()
 void TabManager2::SetActiveTab(int id)
 {
 	m_activeTabId = id;
-
-	printf("Set as active %i\n", id);
 }
 
 BrowserTab2* TabManager2::GetTab(int id)
