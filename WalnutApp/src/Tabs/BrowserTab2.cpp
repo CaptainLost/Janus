@@ -49,19 +49,33 @@ void BrowserTab2::NavigateToUrl(const std::string& url)
 	m_webView->Navigate(url);
 }
 
-int  BrowserTab2::GetViewWidth()  const { return m_viewWidth; }
-int  BrowserTab2::GetViewHeight() const { return m_viewHeight; }
+int BrowserTab2::GetViewWidth() const
+{
+	return m_viewWidth;
+}
+
+int BrowserTab2::GetViewHeight() const
+{
+	return m_viewHeight;
+}
 
 void BrowserTab2::SetViewSize(int width, int height)
 {
-	m_viewWidth  = width;
+	m_viewWidth = width;
 	m_viewHeight = height;
 	if (m_webView)
 		m_webView->SetViewSize(width, height);
 }
 
-CefRefPtr<Walnut::WebView>     BrowserTab2::GetWebView()     const { return m_webView; }
-std::shared_ptr<Walnut::Image> BrowserTab2::GetBrowserImage() const { return m_browserImage; }
+CefRefPtr<Walnut::WebView> BrowserTab2::GetWebView() const
+{
+	return m_webView;
+}
+
+std::shared_ptr<Walnut::Image> BrowserTab2::GetBrowserImage() const
+{
+	return m_browserImage;
+}
 
 void BrowserTab2::SetBrowserImage(std::shared_ptr<Walnut::Image> image)
 {
@@ -73,8 +87,15 @@ Walnut::WebViewState BrowserTab2::GetWebViewState() const
 	return m_webView ? m_webView->GetState() : Walnut::WebViewState{};
 }
 
-std::string&       BrowserTab2::GetUrlInput()       { return m_urlInput; }
-const std::string& BrowserTab2::GetUrlInput() const { return m_urlInput; }
+std::string& BrowserTab2::GetUrlInput()
+{
+	return m_urlInput;
+}
+
+const std::string& BrowserTab2::GetUrlInput() const
+{
+	return m_urlInput;
+}
 
 std::string BrowserTab2::GetTabLabel() const
 {

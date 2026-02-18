@@ -94,10 +94,21 @@ BrowserTab2* TabManager2::GetTab(int id)
 	return it->get();
 }
 
-int  TabManager2::GetActiveTabId() const { return m_activeTabId; }
-BrowserTab2* TabManager2::GetActiveTab() { return GetTab(m_activeTabId); }
+int TabManager2::GetActiveTabId() const
+{
+	return m_activeTabId;
+}
 
-const std::vector<std::shared_ptr<BrowserTab2>>& TabManager2::Tabs() const { return m_tabs; }
+BrowserTab2* TabManager2::GetActiveTab()
+{
+	return GetTab(m_activeTabId);
+}
+
+const std::vector<std::shared_ptr<BrowserTab2>>& TabManager2::Tabs() const
+{
+	return m_tabs;
+}
+
 bool TabManager2::HasAnyTab() const
 {
 	return !m_tabs.empty();

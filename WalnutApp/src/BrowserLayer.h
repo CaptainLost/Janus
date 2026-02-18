@@ -22,7 +22,7 @@ private:
 	void RenderSidebar();
 	void RenderMainViewport();
 
-	TabManager2     m_tabManager;
+	TabManager2 m_tabManager;
 	BrowserViewport m_viewport{"main"};
 
 	bool m_layoutBuilt = false;

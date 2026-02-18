@@ -22,6 +22,6 @@ private:
 	void RenderBrowserContent(BrowserTab2& tab);
 	void ForwardInputToBrowser(BrowserTab2& tab, ImVec2 imagePos);
 
-	std::string    m_uniqueId;
-	AddressBar     m_addressBar;
+	std::string m_uniqueId;
+	AddressBar m_addressBar;
 };
