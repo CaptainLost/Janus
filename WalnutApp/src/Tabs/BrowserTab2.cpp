@@ -99,12 +99,12 @@ const std::string& BrowserTab2::GetUrlInput() const
 
 std::string BrowserTab2::GetTabLabel() const
 {
-	Walnut::WebViewState viewState = GetWebViewState();
+	if (IsOpen())
+	{
+		Walnut::WebViewState viewState = GetWebViewState();
 
-	std::string label = "";
-	label += viewState.Title;
-	label += "Tab ";
-	label += std::to_string(m_id);
+		return viewState.Title.empty() ? "No Title" : viewState.Title;
+	}
 
-	return label;
+	return "Empty Tab";
 }
