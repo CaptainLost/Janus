@@ -18,11 +18,13 @@ project "WalnutApp"
       "%{IncludeDir.glm}",
       "%{IncludeDir.CEF}",
       "%{IncludeDir.IconFontCppHeaders}",
+      "%{IncludeDir.SQLite}",
    }
 
     links
     {
         "Walnut",
+        "SQLite",
     }
 
    defines

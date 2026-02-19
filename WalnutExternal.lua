@@ -7,6 +7,7 @@ IncludeDir["VulkanSDK"] = "%{VULKAN_SDK}/Include"
 IncludeDir["glm"] = "../vendor/glm"
 IncludeDir["CEF"] = "../vendor/cef"
 IncludeDir["IconFontCppHeaders"] = "../vendor/IconFontCppHeaders"
+IncludeDir["SQLite"] = "../vendor/sqlite"
 
 LibraryDir = {}
 LibraryDir["VulkanSDK"] = "%{VULKAN_SDK}/Lib"
@@ -22,6 +23,7 @@ group "Dependencies"
    include "vendor/imgui"
    include "vendor/glfw"
    include "vendor/cef"
+   include "vendor/sqlite"
 group ""
 
 group "Core"
