@@ -40,27 +40,28 @@ void UrlSuggestions::RenderDropdown(BrowserTab2* tab, ImVec2 inputMin, ImVec2 in
 	if (m_suggestions.empty())
 		return;
 
-	const float itemHeight = ImGui::GetFrameHeightWithSpacing();
-	const float dropdownHeight = std::min((float)m_suggestions.size(), 8.0f) * itemHeight
-		+ ImGui::GetStyle().WindowPadding.y * 2.0f;
+	const float width = inputMax.x - inputMin.x;
+	const float maxHeight = 8.0f * ImGui::GetFrameHeightWithSpacing();
 
 	ImGui::SetNextWindowPos(ImVec2(inputMin.x, inputMax.y));
-	ImGui::SetNextWindowSize(ImVec2(inputMax.x - inputMin.x, dropdownHeight));
+	ImGui::SetNextWindowSizeConstraints(ImVec2(width, 0.0f), ImVec2(width, maxHeight));
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
 	ImGuiWindowFlags flags =
-		ImGuiWindowFlags_NoTitleBar          |
-		ImGuiWindowFlags_NoResize            |
-		ImGuiWindowFlags_NoMove              |
-		ImGuiWindowFlags_NoScrollbar         |
-		ImGuiWindowFlags_NoSavedSettings     |
+		ImGuiWindowFlags_NoTitleBar            |
+		ImGuiWindowFlags_NoResize              |
+		ImGuiWindowFlags_NoMove                |
+		ImGuiWindowFlags_NoScrollbar           |
+		ImGuiWindowFlags_NoSavedSettings       |
 		ImGuiWindowFlags_NoBringToFrontOnFocus |
-		ImGuiWindowFlags_NoFocusOnAppearing  |
-		ImGuiWindowFlags_NoNav               |
-		ImGuiWindowFlags_NoDocking;
+		ImGuiWindowFlags_NoFocusOnAppearing    |
+		ImGuiWindowFlags_NoNav                 |
+		ImGuiWindowFlags_NoDocking             |
+		ImGuiWindowFlags_AlwaysAutoResize;
 
 	ImGui::Begin("##url_suggestions", nullptr, flags);
 	ImGui::BringWindowToDisplayFront(ImGui::GetCurrentWindow());
+	m_dropdownHovered = ImGui::IsWindowHovered(ImGuiHoveredFlags_AllowWhenBlockedByActiveItem);
 
 	for (int i = 0; i < (int)m_suggestions.size(); i++)
 	{
@@ -87,6 +88,7 @@ void UrlSuggestions::Clear()
 	m_suggestions.clear();
 	m_lastQuery = "";
 	m_selectedSuggestion = -1;
+	m_dropdownHovered = false;
 }
 
 std::string UrlSuggestions::GetSelectedUrl() const

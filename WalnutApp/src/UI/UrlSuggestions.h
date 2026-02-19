@@ -17,10 +17,12 @@ public:
 	void Clear();
 
 	bool HasSuggestions() const { return !m_suggestions.empty(); }
+	bool IsDropdownHovered() const { return m_dropdownHovered; }
 	std::string GetSelectedUrl() const;
 
 private:
 	std::vector<HistoryEntry> m_suggestions;
 	std::string m_lastQuery;
 	int m_selectedSuggestion = -1;
+	bool m_dropdownHovered = false;
 };

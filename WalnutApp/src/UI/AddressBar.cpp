@@ -128,7 +128,7 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 		m_suggestions.Clear();
 	}
 
-	if (isActive && m_suggestions.HasSuggestions())
+	if (m_suggestions.HasSuggestions() && (isActive || m_suggestions.IsDropdownHovered()))
 		m_suggestions.RenderDropdown(tab, inputMin, inputMax);
 }
 
