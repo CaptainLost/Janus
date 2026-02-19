@@ -40,12 +40,12 @@ void UrlSuggestions::RenderDropdown(BrowserTab2* tab, ImVec2 inputMin, ImVec2 in
 	if (m_suggestions.empty())
 		return;
 
-	const float itemH = ImGui::GetFrameHeightWithSpacing();
-	const float dropdownH = std::min((float)m_suggestions.size(), 8.0f) * itemH
+	const float itemHeight = ImGui::GetFrameHeightWithSpacing();
+	const float dropdownHeight = std::min((float)m_suggestions.size(), 8.0f) * itemHeight
 		+ ImGui::GetStyle().WindowPadding.y * 2.0f;
 
 	ImGui::SetNextWindowPos(ImVec2(inputMin.x, inputMax.y));
-	ImGui::SetNextWindowSize(ImVec2(inputMax.x - inputMin.x, dropdownH));
+	ImGui::SetNextWindowSize(ImVec2(inputMax.x - inputMin.x, dropdownHeight));
 	ImGui::SetNextWindowBgAlpha(1.0f);
 
 	ImGuiWindowFlags flags =

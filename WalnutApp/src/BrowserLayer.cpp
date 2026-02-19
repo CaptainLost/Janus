@@ -63,8 +63,8 @@ void BrowserLayer::BuildDockLayout()
 	ImGui::DockBuilderRemoveNode(dockspaceId);
 	ImGui::DockBuilderAddNode(dockspaceId, ImGuiDockNodeFlags_DockSpace);
 
-	const ImGuiViewport* vp = ImGui::GetMainViewport();
-	ImGui::DockBuilderSetNodeSize(dockspaceId, vp->WorkSize);
+	const ImGuiViewport* viewport = ImGui::GetMainViewport();
+	ImGui::DockBuilderSetNodeSize(dockspaceId, viewport->WorkSize);
 
 	ImGuiID dockLeft = 0, dockRight = 0;
 	ImGui::DockBuilderSplitNode(dockspaceId, ImGuiDir_Left, 0.20f, &dockLeft, &dockRight);
@@ -91,9 +91,9 @@ void BrowserLayer::RenderSidebar()
 	ImGui::Begin("##Sidebar", nullptr,
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
 
-	auto renderTabList = [](TabManager2& mgr, const char* sectionLabel)
+	auto renderTabList = [](TabManager2& tabManager, const char* sectionLabel)
 	{
-		if (mgr.Tabs().empty())
+		if (tabManager.Tabs().empty())
 			return;
 
 		if (sectionLabel)
@@ -103,7 +103,7 @@ void BrowserLayer::RenderSidebar()
 		}
 
 		int removeId = -1;
-		for (const auto& tabPtr : mgr.Tabs())
+		for (const auto& tabPtr : tabManager.Tabs())
 		{
 			auto& tab = *tabPtr;
 			ImGui::PushID(&tab);
@@ -123,12 +123,12 @@ void BrowserLayer::RenderSidebar()
 					title = ICON_FA_SPINNER " " + title;
 			}
 
-			bool isActive = (tab.GetId() == mgr.GetActiveTabId());
+			bool isActive = (tab.GetId() == tabManager.GetActiveTabId());
 			if (isActive)
 				ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
 
 			if (ImGui::Button(title.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
-				mgr.SetActiveTab(tab.GetId());
+				tabManager.SetActiveTab(tab.GetId());
 
 			if (isActive)
 				ImGui::PopStyleColor();
@@ -141,7 +141,7 @@ void BrowserLayer::RenderSidebar()
 		}
 
 		if (removeId >= 0)
-			mgr.RemoveTab(removeId);
+			tabManager.RemoveTab(removeId);
 	};
 
 	ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), "Main");

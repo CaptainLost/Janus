@@ -88,10 +88,10 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 	if (isOpen && !urlBarFocused && !state.URL.empty())
 		url = state.URL;
 
-	float goWidth = ImGui::CalcTextSize(ICON_FA_PLAY).x
+	float goButtonWidth = ImGui::CalcTextSize(ICON_FA_PLAY).x
 		+ ImGui::GetStyle().ItemSpacing.x * 2
 		+ ImGui::GetStyle().FramePadding.x * 2;
-	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goWidth);
+	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goButtonWidth);
 
 	bool enterPressed = ImGui::InputText(
 		"##nav_url",

@@ -527,10 +527,10 @@ namespace Walnut {
 		check_vk_result(err);
 
 		// Create Framebuffers
-		int w, h;
-		glfwGetFramebufferSize(m_WindowHandle, &w, &h);
+		int framebufferWidth, framebufferHeight;
+		glfwGetFramebufferSize(m_WindowHandle, &framebufferWidth, &framebufferHeight);
 		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-		SetupVulkanWindow(wd, surface, w, h);
+		SetupVulkanWindow(wd, surface, framebufferWidth, framebufferHeight);
 
 		s_AllocatedCommandBuffers.resize(wd->ImageCount);
 		s_ResourceFreeQueue.resize(wd->ImageCount);

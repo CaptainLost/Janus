@@ -13,9 +13,9 @@ namespace Walnut {
 
 	void CustomTitlebar::Render()
 	{
-		const float frameH = ImGui::GetFrameHeight();
-		const float vPad = 3.0f;
-		m_TitlebarHeight = frameH + vPad * 2.0f;
+		const float frameHeight = ImGui::GetFrameHeight();
+		const float verticalPadding = 3.0f;
+		m_TitlebarHeight = frameHeight + verticalPadding * 2.0f;
 		const float buttonSize = m_TitlebarHeight; // square buttons
 
 		const ImGuiViewport* viewport = ImGui::GetMainViewport();
@@ -123,11 +123,11 @@ namespace Walnut {
 
 	bool CustomTitlebar::IsInDragArea(int screenX, int screenY) const
 	{
-		int winX, winY;
-		glfwGetWindowPos(m_WindowHandle, &winX, &winY);
+		int windowX, windowY;
+		glfwGetWindowPos(m_WindowHandle, &windowX, &windowY);
 
-		float localX = (float)(screenX - winX);
-		float localY = (float)(screenY - winY);
+		float localX = (float)(screenX - windowX);
+		float localY = (float)(screenY - windowY);
 
 		if (localY < 0.0f || localY >= m_TitlebarHeight)
 			return false;
