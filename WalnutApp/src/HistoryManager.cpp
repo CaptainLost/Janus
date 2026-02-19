@@ -1,32 +1,29 @@
 #include "HistoryManager.h"
+#include "Paths.h"
+#include "Sqlite.h"
 
-#include "sqlite3.h"
+namespace {
 
-#include <ShlObj.h>
-#include <filesystem>
-
-static std::string GetHistoryDbPath()
+HistoryEntry ReadEntry(sqlite3_stmt* stmt)
 {
-	PWSTR appDataPath = nullptr;
-	if (SUCCEEDED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &appDataPath)))
-	{
-		std::filesystem::path dir = std::filesystem::path(appDataPath) / "Janus";
-		CoTaskMemFree(appDataPath);
-		std::filesystem::create_directories(dir);
-		return (dir / "history.db").string();
-	}
-	return "history.db";
+	return {
+		.url        = Sqlite::ColumnText(stmt, 0),
+		.title      = Sqlite::ColumnText(stmt, 1),
+		.visitCount = sqlite3_column_int(stmt, 2),
+		.lastVisit  = sqlite3_column_int64(stmt, 3),
+	};
 }
+
+} // namespace
 
 HistoryManager::HistoryManager()
 {
-	OpenOrCreate(GetHistoryDbPath());
+	OpenOrCreate(Paths::HistoryDb().string());
 }
 
 HistoryManager::~HistoryManager()
 {
-	if (m_db)
-		sqlite3_close(m_db);
+	sqlite3_close(m_db);
 }
 
 void HistoryManager::OpenOrCreate(const std::string& path)
@@ -34,7 +31,7 @@ void HistoryManager::OpenOrCreate(const std::string& path)
 	if (sqlite3_open(path.c_str(), &m_db) != SQLITE_OK)
 		return;
 
-	const char* sql =
+	constexpr const char* sql =
 		"CREATE TABLE IF NOT EXISTS visits ("
 		"  url         TEXT PRIMARY KEY,"
 		"  title       TEXT,"
@@ -50,56 +47,91 @@ void HistoryManager::AddVisit(const std::string& url, const std::string& title)
 	if (!m_db || url.empty())
 		return;
 
-	const char* sql =
+	constexpr const char* sql =
 		"INSERT INTO visits(url, title, visit_count, last_visit) VALUES(?1, ?2, 1, strftime('%s','now'))"
-		"ON CONFLICT(url) DO UPDATE SET"
+		" ON CONFLICT(url) DO UPDATE SET"
 		"  title       = excluded.title,"
 		"  visit_count = visit_count + 1,"
 		"  last_visit  = excluded.last_visit;";
 
-	sqlite3_stmt* stmt = nullptr;
-	if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
+	auto stmt = Sqlite::Prepare(m_db, sql);
+	if (!stmt)
 		return;
 
-	sqlite3_bind_text(stmt, 1, url.c_str(), -1, SQLITE_TRANSIENT);
-	sqlite3_bind_text(stmt, 2, title.c_str(), -1, SQLITE_TRANSIENT);
-	sqlite3_step(stmt);
-	sqlite3_finalize(stmt);
+	sqlite3_bind_text(stmt.get(), 1, url.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_text(stmt.get(), 2, title.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt.get());
+	m_version++;
 }
 
-std::vector<HistoryEntry> HistoryManager::Query(const std::string& prefix, int limit) const
+void HistoryManager::DeleteEntry(const std::string& url)
 {
-	std::vector<HistoryEntry> results;
-	if (!m_db || prefix.empty())
-		return results;
+	if (!m_db || url.empty())
+		return;
 
-	const char* sql =
-		"SELECT url, title, visit_count FROM visits"
+	auto stmt = Sqlite::Prepare(m_db, "DELETE FROM visits WHERE url = ?1;");
+	if (!stmt)
+		return;
+
+	sqlite3_bind_text(stmt.get(), 1, url.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_step(stmt.get());
+	m_version++;
+}
+
+void HistoryManager::DeleteAll()
+{
+	if (!m_db)
+		return;
+
+	sqlite3_exec(m_db, "DELETE FROM visits;", nullptr, nullptr, nullptr);
+	m_version++;
+}
+
+std::vector<HistoryEntry> HistoryManager::GetAll(int limit) const
+{
+	if (!m_db)
+		return {};
+
+	constexpr const char* sql =
+		"SELECT url, title, visit_count, last_visit FROM visits"
+		" ORDER BY last_visit DESC"
+		" LIMIT ?1;";
+
+	auto stmt = Sqlite::Prepare(m_db, sql);
+	if (!stmt)
+		return {};
+
+	sqlite3_bind_int(stmt.get(), 1, limit);
+
+	std::vector<HistoryEntry> results;
+	while (sqlite3_step(stmt.get()) == SQLITE_ROW)
+		results.push_back(ReadEntry(stmt.get()));
+
+	return results;
+}
+
+std::vector<HistoryEntry> HistoryManager::Query(const std::string& query, int limit) const
+{
+	if (!m_db || query.empty())
+		return {};
+
+	constexpr const char* sql =
+		"SELECT url, title, visit_count, last_visit FROM visits"
 		" WHERE url LIKE ?1 OR title LIKE ?1"
 		" ORDER BY visit_count DESC, last_visit DESC"
 		" LIMIT ?2;";
 
-	sqlite3_stmt* stmt = nullptr;
-	if (sqlite3_prepare_v2(m_db, sql, -1, &stmt, nullptr) != SQLITE_OK)
-		return results;
+	auto stmt = Sqlite::Prepare(m_db, sql);
+	if (!stmt)
+		return {};
 
-	std::string pattern = "%" + prefix + "%";
-	sqlite3_bind_text(stmt, 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
-	sqlite3_bind_int(stmt, 2, limit);
+	std::string pattern = "%" + query + "%";
+	sqlite3_bind_text(stmt.get(), 1, pattern.c_str(), -1, SQLITE_TRANSIENT);
+	sqlite3_bind_int(stmt.get(), 2, limit);
 
-	while (sqlite3_step(stmt) == SQLITE_ROW)
-	{
-		HistoryEntry e;
-		auto col = [&](int i) -> std::string {
-			const char* s = reinterpret_cast<const char*>(sqlite3_column_text(stmt, i));
-			return s ? s : "";
-		};
-		e.url        = col(0);
-		e.title      = col(1);
-		e.visitCount = sqlite3_column_int(stmt, 2);
-		results.push_back(std::move(e));
-	}
+	std::vector<HistoryEntry> results;
+	while (sqlite3_step(stmt.get()) == SQLITE_ROW)
+		results.push_back(ReadEntry(stmt.get()));
 
-	sqlite3_finalize(stmt);
 	return results;
 }

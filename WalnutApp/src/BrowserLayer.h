@@ -6,7 +6,6 @@
 #include "UI/BrowserViewport.h"
 #include "HistoryManager.h"
 
-#include <memory>
 #include <string>
 #include <unordered_map>
 #include <vector>
@@ -18,6 +17,8 @@ public:
 	void OnDetach() override;
 	void OnUpdate(float ts) override;
 	void OnUIRender() override;
+
+	void OpenHistoryWindow() { m_viewport.OpenHistoryWindow(); }
 
 private:
 	void BuildDockLayout();

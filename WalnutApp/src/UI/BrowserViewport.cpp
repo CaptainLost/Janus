@@ -60,14 +60,14 @@ void BrowserViewport::RenderTabBar(TabManager2& tabManager)
 {
 	int activeTabId = tabManager.GetActiveTabId();
 
-	ImGuiID dockspace_id = ImGui::GetID("MainViewport");
-	ImGui::DockSpace(dockspace_id);
+	ImGuiID dockspaceId = ImGui::GetID("MainViewport");
+	ImGui::DockSpace(dockspaceId);
 
 	for (size_t i = 0; i < tabManager.Tabs().size();)
 	{
 		std::shared_ptr<BrowserTab2> tab = tabManager.Tabs()[i];
 
-		ImGui::SetNextWindowDockID(dockspace_id, ImGuiCond_Once);
+		ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_Once);
 
 		bool isOpen = true;
 
@@ -96,6 +96,9 @@ void BrowserViewport::RenderTabBar(TabManager2& tabManager)
 
 		i++;
 	}
+
+	if (m_historyManager)
+		m_historyWindow.Render(tabManager, *m_historyManager, dockspaceId);
 }
 
 void BrowserViewport::RenderTabContent(BrowserTab2& tab)

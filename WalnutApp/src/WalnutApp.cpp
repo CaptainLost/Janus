@@ -27,7 +27,9 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 	spec.CustomTitlebar = true;
 
 	Application* app = new Walnut::Application(spec);
-	app->PushLayer<BrowserLayer>();
+
+	auto browserLayer = std::make_shared<BrowserLayer>();
+	app->PushLayer(browserLayer);
 
 	app->SetTitlebarLeftCallback([]()
 	{
@@ -36,9 +38,24 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 		TitlebarButton(ICON_FA_DOWNLOAD "##downloads");
 	});
 
-	app->SetTitlebarRightCallback([]()
+	app->SetTitlebarRightCallback([browserLayer]()
 	{
 		TitlebarButton(ICON_FA_GEAR "##settings");
+
+		ImVec2 buttonMin = ImGui::GetItemRectMin();
+		ImVec2 buttonMax = ImGui::GetItemRectMax();
+
+		if (ImGui::IsItemClicked())
+			ImGui::OpenPopup("##settings_popup");
+
+		ImGui::SetNextWindowPos(ImVec2(buttonMin.x, buttonMax.y), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+		if (ImGui::BeginPopup("##settings_popup"))
+		{
+			if (ImGui::MenuItem(ICON_FA_CLOCK_ROTATE_LEFT "  History"))
+				browserLayer->OpenHistoryWindow();
+
+			ImGui::EndPopup();
+		}
 	});
 
 	return app;

@@ -3,6 +3,7 @@
 #include "../Tabs/TabManager2.h"
 #include "../HistoryManager.h"
 #include "AddressBar.h"
+#include "HistoryWindow.h"
 
 #include "imgui.h"
 
@@ -16,7 +17,14 @@ public:
 
 	void Render(TabManager2& tabManager);
 	void UpdateBrowserImage(BrowserTab2& tab);
-	void SetHistoryManager(HistoryManager* hm) { m_addressBar.SetHistoryManager(hm); }
+
+	void SetHistoryManager(HistoryManager* hm)
+	{
+		m_addressBar.SetHistoryManager(hm);
+		m_historyManager = hm;
+	}
+
+	void OpenHistoryWindow() { m_historyWindow.Open(); }
 
 private:
 	void RenderTabBar(TabManager2& tabManager);
@@ -26,4 +34,6 @@ private:
 
 	std::string m_uniqueId;
 	AddressBar m_addressBar;
+	HistoryWindow m_historyWindow;
+	HistoryManager* m_historyManager = nullptr;
 };
