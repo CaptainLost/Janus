@@ -1,9 +1,9 @@
 #pragma once
 
-#include "../Tabs/TabManager2.h"
-#include "../HistoryManager.h"
+#include "../Browser/TabManager2.h"
+#include "../History/HistoryManager.h"
 #include "AddressBar.h"
-#include "HistoryWindow.h"
+#include "../History/HistoryWindow.h"
 
 #include "imgui.h"
 

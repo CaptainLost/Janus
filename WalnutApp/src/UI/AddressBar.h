@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../Tabs/TabManager2.h"
-#include "../Tabs/BrowserTab2.h"
-#include "../HistoryManager.h"
+#include "../Browser/TabManager2.h"
+#include "../Browser/BrowserTab2.h"
+#include "../History/HistoryManager.h"
 #include "UrlSuggestions.h"
 
 #include "imgui.h"

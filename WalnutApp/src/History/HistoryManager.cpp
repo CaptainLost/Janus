@@ -1,6 +1,6 @@
 #include "HistoryManager.h"
-#include "Paths.h"
-#include "Sqlite.h"
+#include "../Core/Paths.h"
+#include "../Core/Sqlite.h"
 
 namespace {
 

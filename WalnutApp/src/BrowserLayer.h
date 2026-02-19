@@ -2,9 +2,9 @@
 
 #include "Walnut/Layer.h"
 
-#include "Tabs/TabManager2.h"
+#include "Browser/TabManager2.h"
 #include "UI/BrowserViewport.h"
-#include "HistoryManager.h"
+#include "History/HistoryManager.h"
 
 #include <string>
 #include <unordered_map>

@@ -1,5 +1,5 @@
 #include "BrowserViewport.h"
-#include "../CefInputBridge.h"
+#include "../Browser/CefInputBridge.h"
 
 #include "Walnut/Image.h"
 
