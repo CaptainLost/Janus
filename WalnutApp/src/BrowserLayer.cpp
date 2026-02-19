@@ -12,7 +12,7 @@
 
 void BrowserLayer::OnAttach()
 {
-
+	m_viewport.SetHistoryManager(&m_historyManager);
 }
 
 void BrowserLayer::OnDetach()
@@ -26,9 +26,20 @@ void BrowserLayer::OnUpdate(float ts)
 
 	for (const auto& tab : m_tabManager.Tabs())
 	{
-		if (tab->IsOpen())
+		if (!tab->IsOpen())
+			continue;
+
+		m_viewport.UpdateBrowserImage(*tab);
+
+		Walnut::WebViewState state = tab->GetWebViewState();
+		if (!state.IsLoading && !state.URL.empty() && !state.Title.empty())
 		{
-			m_viewport.UpdateBrowserImage(*tab);
+			auto& lastUrl = m_lastRecordedUrls[tab->GetId()];
+			if (lastUrl != state.URL)
+			{
+				m_historyManager.AddVisit(state.URL, state.Title);
+				lastUrl = state.URL;
+			}
 		}
 	}
 }

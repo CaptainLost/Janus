@@ -101,15 +101,35 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 		StringResizeCallback,
 		&url);
 
-	urlBarFocused = ImGui::IsItemActive();
+	bool isActive = ImGui::IsItemActive();
+	ImVec2 inputMin = ImGui::GetItemRectMin();
+	ImVec2 inputMax = ImGui::GetItemRectMax();
+
+	urlBarFocused = isActive;
 	url.resize(std::strlen(url.c_str()));
 
-	ImGui::SameLine();
+	if (isActive)
+	{
+		m_suggestions.Update(url, m_history);
+		m_suggestions.HandleKeyboard();
+	}
 
+	ImGui::SameLine();
 	bool goPressed = ImGui::Button(ICON_FA_PLAY "##goLabel");
 
-	if ((enterPressed || goPressed) && !url.empty())
-		tab->Open(url);
+	std::string navUrl = url;
+	std::string selectedUrl = m_suggestions.GetSelectedUrl();
+	if (!selectedUrl.empty())
+		navUrl = selectedUrl;
+
+	if ((enterPressed || goPressed) && !navUrl.empty())
+	{
+		tab->Open(navUrl);
+		m_suggestions.Clear();
+	}
+
+	if (isActive && m_suggestions.HasSuggestions())
+		m_suggestions.RenderDropdown(tab, inputMin, inputMax);
 }
 
 int AddressBar::StringResizeCallback(ImGuiInputTextCallbackData* data)

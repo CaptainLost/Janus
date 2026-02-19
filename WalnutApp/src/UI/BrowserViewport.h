@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../Tabs/TabManager2.h"
+#include "../HistoryManager.h"
 #include "AddressBar.h"
 
 #include "imgui.h"
@@ -15,6 +16,7 @@ public:
 
 	void Render(TabManager2& tabManager);
 	void UpdateBrowserImage(BrowserTab2& tab);
+	void SetHistoryManager(HistoryManager* hm) { m_addressBar.SetHistoryManager(hm); }
 
 private:
 	void RenderTabBar(TabManager2& tabManager);
