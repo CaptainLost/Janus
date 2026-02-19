@@ -1,43 +1,36 @@
 #pragma once
 
 #include <functional>
-#include <string>
 
 struct GLFWwindow;
-struct ImVec2;
-struct ImFont;
 
 namespace Walnut {
 
 	class CustomTitlebar
 	{
 	public:
-		CustomTitlebar(GLFWwindow* windowHandle, const std::string& title, ImFont* titleFont = nullptr);
+		CustomTitlebar(GLFWwindow* windowHandle);
 		~CustomTitlebar() = default;
 
-		// Render the custom titlebar and handle all interaction logic
-		void Render(const std::function<void()>& menubarCallback = nullptr);
+		void Render();
 
-		// Get the height of the titlebar
 		float GetHeight() const { return m_TitlebarHeight; }
 
-		// Update the window title
-		void SetTitle(const std::string& title) { m_WindowTitle = title; }
+		void SetLeftCallback(const std::function<void()>& cb) { m_LeftCallback = cb; }
+		void SetRightCallback(const std::function<void()>& cb) { m_RightCallback = cb; }
+
+		bool IsInDragArea(int screenX, int screenY) const;
 
 	private:
-		void HandleDragging(const ImVec2& viewportPos, const ImVec2& viewportSize, float controlsStartX);
-
 		GLFWwindow* m_WindowHandle = nullptr;
-		std::string m_WindowTitle;
-		ImFont* m_TitleFont = nullptr;
 
-		// Titlebar dimensions and state
-		float m_TitlebarHeight = 40.0f;
-		bool m_TitlebarDragging = false;
-		double m_DragStartX = 0.0;
-		double m_DragStartY = 0.0;
-		int m_DragWinStartX = 0;
-		int m_DragWinStartY = 0;
+		float m_TitlebarHeight = 0.0f;
+		float m_LeftContentEndX = 0.0f;
+		float m_RightContentStartX = 0.0f;
+		float m_PrevRightCallbackWidth = 0.0f;
+
+		std::function<void()> m_LeftCallback;
+		std::function<void()> m_RightCallback;
 	};
 
 }

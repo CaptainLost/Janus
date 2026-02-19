@@ -17,6 +17,10 @@ typedef VkPhysicalDevice_T* VkPhysicalDevice;
 typedef VkDevice_T* VkDevice;
 typedef VkCommandBuffer_T* VkCommandBuffer;
 
+#ifdef WL_PLATFORM_WINDOWS
+#include <Windows.h>
+#endif
+
 namespace Walnut {
 
 	class CustomTitlebar;
@@ -39,6 +43,9 @@ namespace Walnut {
 
 		void Run();
 		void SetMenubarCallback(const std::function<void()>& menubarCallback) { m_MenubarCallback = menubarCallback; }
+
+		void SetTitlebarLeftCallback(const std::function<void()>& cb);
+		void SetTitlebarRightCallback(const std::function<void()>& cb);
 
 		template<typename T>
 		void PushLayer()
@@ -63,11 +70,15 @@ namespace Walnut {
 
 		static void SubmitResourceFree(std::function<void()>&& func);
 
-		/// Height of the custom titlebar in pixels (valid after first frame if CustomTitlebar is true).
 		float GetTitlebarHeight() const;
 	private:
 		void Init();
 		void Shutdown();
+
+#ifdef WL_PLATFORM_WINDOWS
+		static LRESULT CALLBACK WndProcHook(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
+		WNDPROC m_OriginalWndProc = nullptr;
+#endif
 
 	private:
 		ApplicationSpecification m_Specification;
@@ -81,7 +92,6 @@ namespace Walnut {
 		std::vector<std::shared_ptr<Layer>> m_LayerStack;
 		std::function<void()> m_MenubarCallback;
 
-		// Custom titlebar
 		std::unique_ptr<Walnut::CustomTitlebar> m_CustomTitlebar;
 	};
 

@@ -16,13 +16,18 @@
 #define GLFW_INCLUDE_VULKAN
 #include <GLFW/glfw3.h>
 #include <vulkan/vulkan.h>
+
+#ifdef WL_PLATFORM_WINDOWS
+#define GLFW_EXPOSE_NATIVE_WIN32
+#include <GLFW/glfw3native.h>
+#include <windowsx.h>
+#endif
 #include <glm/glm.hpp>
 
 #include <iostream>
 
 // Emedded font
 #include "ImGui/Roboto-Regular.embed"
-#include "ImGui/Kingdom.embed"
 #include "ImGui/FontAwesome.embed"
 #include "IconsFontAwesome6.h"
 
@@ -356,7 +361,10 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 		return;
 	}
 	if (err == VK_SUBOPTIMAL_KHR)
+	{
 		g_SwapChainRebuild = true;
+		return;
+	}
 	check_vk_result(err);
 
 	s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % g_MainWindowData.ImageCount;
@@ -498,10 +506,9 @@ namespace Walnut {
 
 		m_WindowHandle = glfwCreateWindow(m_Specification.Width, m_Specification.Height, m_Specification.Name.c_str(), NULL, NULL);
 
-		// Create custom titlebar if enabled (font will be set later after ImGui initialization)
 		if (m_Specification.CustomTitlebar)
 		{
-			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name, nullptr);
+			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle);
 		}
 
 		// Setup Vulkan
@@ -580,7 +587,6 @@ namespace Walnut {
 		fontConfig.FontDataOwnedByAtlas = false;
 		fontConfig.PixelSnapH = false;
 
-		ImFont* kingdomFont = io.Fonts->AddFontFromMemoryTTF((void*)g_Kingdom, sizeof(g_Kingdom), 20.0f, &fontConfig);
 		ImFont* robotoFont = io.Fonts->AddFontFromMemoryTTF((void*)g_RobotoRegular, sizeof(g_RobotoRegular), 18.0f, &fontConfig);
 
 		// Merge Font Awesome icons into Roboto font
@@ -594,11 +600,22 @@ namespace Walnut {
 
 		io.FontDefault = robotoFont;
 
-		// Set kingdom font for custom titlebar if enabled
-		if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+#ifdef WL_PLATFORM_WINDOWS
+		if (m_Specification.CustomTitlebar)
 		{
-			m_CustomTitlebar = std::make_unique<CustomTitlebar>(m_WindowHandle, m_Specification.Name, kingdomFont);
+			HWND hwnd = glfwGetWin32Window(m_WindowHandle);
+
+			// Add WS_THICKFRAME | WS_CAPTION so DWM can animate maximize/restore
+			LONG style = GetWindowLong(hwnd, GWL_STYLE);
+			SetWindowLong(hwnd, GWL_STYLE, style | WS_THICKFRAME | WS_CAPTION);
+			SetWindowPos(hwnd, nullptr, 0, 0, 0, 0,
+				SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_FRAMECHANGED);
+
+			SetWindowLongPtr(hwnd, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this));
+			m_OriginalWndProc = reinterpret_cast<WNDPROC>(
+				SetWindowLongPtr(hwnd, GWLP_WNDPROC, reinterpret_cast<LONG_PTR>(&WndProcHook)));
 		}
+#endif
 	}
 
 	void Application::Shutdown()
@@ -628,6 +645,8 @@ namespace Walnut {
 		ImGui::DestroyContext();
 
 		CleanupVulkanWindow();
+		vkDestroySurfaceKHR(g_Instance, g_MainWindowData.Surface, g_Allocator);
+		g_MainWindowData.Surface = VK_NULL_HANDLE;
 		CleanupVulkan();
 
 		glfwDestroyWindow(m_WindowHandle);
@@ -682,7 +701,7 @@ namespace Walnut {
 				// Render custom titlebar if enabled
 				if (m_Specification.CustomTitlebar && m_CustomTitlebar)
 				{
-					m_CustomTitlebar->Render(m_MenubarCallback);
+					m_CustomTitlebar->Render();
 				}
 
 				static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
@@ -862,5 +881,88 @@ namespace Walnut {
 	{
 		s_ResourceFreeQueue[s_CurrentFrameIndex].emplace_back(func);
 	}
+
+	void Application::SetTitlebarLeftCallback(const std::function<void()>& cb)
+	{
+		if (m_CustomTitlebar)
+			m_CustomTitlebar->SetLeftCallback(cb);
+	}
+
+	void Application::SetTitlebarRightCallback(const std::function<void()>& cb)
+	{
+		if (m_CustomTitlebar)
+			m_CustomTitlebar->SetRightCallback(cb);
+	}
+
+#ifdef WL_PLATFORM_WINDOWS
+	LRESULT CALLBACK Application::WndProcHook(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam)
+	{
+		Application* app = reinterpret_cast<Application*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
+		if (!app)
+			return DefWindowProc(hwnd, msg, wParam, lParam);
+
+		if (msg == WM_NCCALCSIZE && wParam)
+		{
+			// Eliminate native non-client area; DWM still animates because WS_CAPTION|WS_THICKFRAME are set
+			if (IsZoomed(hwnd))
+			{
+				// Constrain maximized window to work area (respects taskbar)
+				NCCALCSIZE_PARAMS* p = reinterpret_cast<NCCALCSIZE_PARAMS*>(lParam);
+				MONITORINFO mi = { sizeof(mi) };
+				GetMonitorInfo(MonitorFromWindow(hwnd, MONITOR_DEFAULTTONEAREST), &mi);
+				p->rgrc[0] = mi.rcWork;
+			}
+			return 0;
+		}
+
+		if (msg == WM_NCACTIVATE)
+			return DefWindowProc(hwnd, msg, wParam, -1); // suppress NC area redraw flicker
+
+		if (msg == WM_NCHITTEST)
+		{
+			// Resize border hit-testing (WS_THICKFRAME style provides resize, but NC area is 0)
+			if (!IsZoomed(hwnd))
+			{
+				POINT pt = { GET_X_LPARAM(lParam), GET_Y_LPARAM(lParam) };
+				RECT rc;
+				GetWindowRect(hwnd, &rc);
+				const int b = 6;
+
+				bool left   = pt.x <  rc.left   + b;
+				bool right  = pt.x >= rc.right   - b;
+				bool top    = pt.y <  rc.top     + b;
+				bool bottom = pt.y >= rc.bottom  - b;
+
+				if (top    && left)  return HTTOPLEFT;
+				if (top    && right) return HTTOPRIGHT;
+				if (bottom && left)  return HTBOTTOMLEFT;
+				if (bottom && right) return HTBOTTOMRIGHT;
+				if (top)             return HTTOP;
+				if (bottom)          return HTBOTTOM;
+				if (left)            return HTLEFT;
+				if (right)           return HTRIGHT;
+			}
+
+			// Titlebar drag area
+			int x = GET_X_LPARAM(lParam);
+			int y = GET_Y_LPARAM(lParam);
+			if (app->m_CustomTitlebar && app->m_CustomTitlebar->IsInDragArea(x, y))
+				return HTCAPTION;
+
+			return HTCLIENT;
+		}
+
+		if (msg == WM_NCLBUTTONDBLCLK && wParam == HTCAPTION)
+		{
+			if (IsZoomed(hwnd))
+				ShowWindow(hwnd, SW_RESTORE);
+			else
+				ShowWindow(hwnd, SW_MAXIMIZE);
+			return 0;
+		}
+
+		return CallWindowProc(app->m_OriginalWndProc, hwnd, msg, wParam, lParam);
+	}
+#endif
 
 }
