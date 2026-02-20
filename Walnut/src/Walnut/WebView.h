@@ -1,9 +1,9 @@
 #pragma once
 
-/// Walnut::WebView — a reusable, off-screen CEF browser wrapper.
+/// Walnut::WebView ï¿½ a reusable, off-screen CEF browser wrapper.
 ///
 /// This class owns a single CEF browser instance rendered off-screen.
-/// It is independent of any UI framework — it simply maintains a pixel buffer
+/// It is independent of any UI framework ï¿½ it simply maintains a pixel buffer
 /// (RGBA) that higher-level code can blit onto a texture / ImGui image.
 
 #ifndef NOMINMAX
@@ -11,6 +11,7 @@
 #endif
 
 #include <cstdint>
+#include <functional>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -20,6 +21,7 @@
 #include "include/cef_life_span_handler.h"
 #include "include/cef_load_handler.h"
 #include "include/cef_display_handler.h"
+#include "include/cef_request_handler.h"
 
 namespace Walnut {
 
@@ -38,7 +40,8 @@ namespace Walnut {
 	                public CefRenderHandler,
 	                public CefLifeSpanHandler,
 	                public CefLoadHandler,
-	                public CefDisplayHandler
+	                public CefDisplayHandler,
+	                public CefRequestHandler
 	{
 	public:
 		/// Construct a WebView with an initial viewport size.
@@ -75,6 +78,14 @@ namespace Walnut {
 		/// Returns true if a new frame was available (dirty flag cleared).
 		bool GetPixelBuffer(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight);
 
+		bool GetFaviconPixels(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight);
+		void SetFaviconData(std::vector<uint8_t> pixels, int width, int height);
+
+		// -- Callbacks --------------------------------------------------------
+
+		void SetAddressChangeCallback(std::function<void(const std::string&)> callback);
+		void SetBeforeBrowseCallback(std::function<bool(const std::string&)> callback);
+
 		// -- Low-level CEF access (for input forwarding, etc.) ----------------
 
 		CefRefPtr<CefBrowser> GetBrowser() const;
@@ -85,6 +96,7 @@ namespace Walnut {
 		CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
 		CefRefPtr<CefLoadHandler>     GetLoadHandler()     override { return this; }
 		CefRefPtr<CefDisplayHandler>  GetDisplayHandler()  override { return this; }
+		CefRefPtr<CefRequestHandler>  GetRequestHandler()  override { return this; }
 
 		// -- CefRenderHandler -------------------------------------------------
 		void GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) override;
@@ -108,9 +120,18 @@ namespace Walnut {
 		                     const CefString& url) override;
 		void OnTitleChange(CefRefPtr<CefBrowser> browser,
 		                   const CefString& title) override;
+		void OnFaviconURLChange(CefRefPtr<CefBrowser> browser,
+		                        const std::vector<CefString>& iconURLs) override;
+
+		// -- CefRequestHandler ------------------------------------------------
+		bool OnBeforeBrowse(CefRefPtr<CefBrowser> browser,
+		                    CefRefPtr<CefFrame> frame,
+		                    CefRefPtr<CefRequest> request,
+		                    bool userGesture,
+		                    bool isRedirect) override;
 
 	private:
-		// Viewport dimensions (atomic-ish — only written from UI thread)
+		// Viewport dimensions (atomic-ish ï¿½ only written from UI thread)
 		int m_ViewWidth;
 		int m_ViewHeight;
 
@@ -129,8 +150,19 @@ namespace Walnut {
 		bool               m_CanGoBack   = false;
 		bool               m_CanGoForward = false;
 
+		// Favicon pixel buffer
+		mutable std::mutex   m_FaviconMutex;
+		std::vector<uint8_t> m_FaviconPixels;
+		int                  m_FaviconWidth  = 0;
+		int                  m_FaviconHeight = 0;
+		bool                 m_FaviconDirty  = false;
+
 		// The underlying CEF browser
 		CefRefPtr<CefBrowser> m_Browser;
+
+		// Callbacks
+		std::function<void(const std::string&)> m_onAddressChange;
+		std::function<bool(const std::string&)> m_onBeforeBrowse;
 
 		IMPLEMENT_REFCOUNTING(WebView);
 	};

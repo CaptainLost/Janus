@@ -58,7 +58,7 @@ void HistoryWindow::Open()
 	m_selectedUrls.clear();
 }
 
-void HistoryWindow::Render(TabManager2& tabManager, HistoryManager& history, ImGuiID dockspaceId)
+void HistoryWindow::Render(TabManager& tabManager, HistoryManager& history, ImGuiID dockspaceId)
 {
 	if (!m_open)
 		return;
@@ -135,7 +135,7 @@ void HistoryWindow::Render(TabManager2& tabManager, HistoryManager& history, ImG
 
 	ImGui::BeginChild("##history_list");
 
-	BrowserTab2* activeTab = tabManager.GetActiveTab();
+	Tab* activeTab = tabManager.GetActiveTab();
 
 	const float checkboxWidth = ImGui::GetFrameHeight();
 

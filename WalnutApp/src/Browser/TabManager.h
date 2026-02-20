@@ -1,29 +1,30 @@
 #pragma once
 
-#include "BrowserTab2.h"
+#include "Tab.h"
 
 #include <memory>
 #include <vector>
 
-class TabManager2
+class TabManager
 {
 public:
 	int AddTab();
+	int AddSavedTab(int dbId, const std::string& baseUrl);
 
-	int AcceptTab(std::shared_ptr<BrowserTab2> tab);
-	std::shared_ptr<BrowserTab2> DetachTab(int id);
+	int AcceptTab(std::shared_ptr<Tab> tab);
+	std::shared_ptr<Tab> DetachTab(int id);
 
 	void RemoveTab(int id);
 	void CloseAll();
 
 	void SetActiveTab(int id);
 
-	BrowserTab2* GetTab(int id);
+	Tab* GetTab(int id);
 
 	int GetActiveTabId() const;
-	BrowserTab2* GetActiveTab();
+	Tab* GetActiveTab();
 
-	const std::vector<std::shared_ptr<BrowserTab2>>& Tabs() const;
+	const std::vector<std::shared_ptr<Tab>>& Tabs() const;
 	bool HasAnyTab() const;
 
 	static int GenerateTabId();
@@ -32,7 +33,7 @@ private:
 	void PickNextActiveTab();
 
 	int m_activeTabId = -1;
-	std::vector<std::shared_ptr<BrowserTab2>> m_tabs;
+	std::vector<std::shared_ptr<Tab>> m_tabs;
 
 	static int s_nextGlobalId;
 };

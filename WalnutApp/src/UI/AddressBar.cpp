@@ -5,9 +5,9 @@
 #include <cstring>
 #include <IconsFontAwesome6.h>
 
-void AddressBar::Render(TabManager2& tabManager)
+void AddressBar::Render(TabManager& tabManager)
 {
-	BrowserTab2* tab = tabManager.GetActiveTab();
+	Tab* tab = tabManager.GetActiveTab();
 	if (!tab)
 	{
 		ImGui::TextDisabled("No active tab");
@@ -19,10 +19,12 @@ void AddressBar::Render(TabManager2& tabManager)
 	RenderUrlInput(tab, m_urlBarFocused);
 }
 
-void AddressBar::RenderForTab(BrowserTab2* tab)
+void AddressBar::RenderForTab(Tab* tab)
 {
 	if (!tab)
+	{
 		return;
+	}
 
 	ImGui::PushID(tab->GetId());
 	bool localFocused = false;
@@ -32,7 +34,7 @@ void AddressBar::RenderForTab(BrowserTab2* tab)
 	ImGui::PopID();
 }
 
-void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
+void AddressBar::RenderNavigationButtons(Tab* tab)
 {
 	bool isOpen = tab->IsOpen();
 	Walnut::WebViewState state;
@@ -46,39 +48,49 @@ void AddressBar::RenderNavigationButtons(BrowserTab2* tab)
 
 	ImGui::BeginDisabled(!isOpen || !state.CanGoBack);
 	if (ImGui::Button(ICON_FA_ANGLE_LEFT "##navigationPrevious") && webView)
+	{
 		webView->GoBack();
+	}
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
 
 	ImGui::BeginDisabled(!isOpen || !state.CanGoForward);
 	if (ImGui::Button(ICON_FA_ANGLE_RIGHT "##navigationNext") && webView)
+	{
 		webView->GoForward();
+	}
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
 
 	if (isOpen && state.IsLoading)
 	{
-		if (ImGui::Button("X") && webView)
+		if (ImGui::Button(ICON_FA_XMARK "##addressClose") && webView)
+		{
 			webView->StopLoading();
+		}
 	}
 	else
 	{
 		ImGui::BeginDisabled(!isOpen);
 		if (ImGui::Button(ICON_FA_ROTATE_RIGHT "##refresh") && webView)
+		{
 			webView->Reload();
+		}
 		ImGui::EndDisabled();
 	}
 }
 
-void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
+void AddressBar::RenderUrlInput(Tab* tab, bool& urlBarFocused)
 {
 	bool isOpen = tab->IsOpen();
 	Walnut::WebViewState state;
 
 	if (isOpen)
+	{
 		state = tab->GetWebViewState();
+	}
 
 	ImGui::SameLine();
 
@@ -95,18 +107,23 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 
 	std::string& url = tab->GetUrlInput();
 	if (url.capacity() < 2048)
+	{
 		url.reserve(2048);
+	}
 
 	if (isOpen && !urlBarFocused && !state.URL.empty())
+	{
 		url = state.URL;
+	}
 
 	float goButtonWidth = ImGui::CalcTextSize(ICON_FA_PLAY).x
 		+ ImGui::GetStyle().ItemSpacing.x * 2
 		+ ImGui::GetStyle().FramePadding.x * 2;
 	ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x - goButtonWidth);
 
-	bool enterPressed = ImGui::InputText(
+	bool enterPressed = ImGui::InputTextWithHint(
 		"##nav_url",
+		"Enter web adress...",
 		url.data(),
 		url.capacity() + 1,
 		ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackResize,
@@ -132,7 +149,9 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 	std::string navUrl = url;
 	std::string selectedUrl = m_suggestions.GetSelectedUrl();
 	if (!selectedUrl.empty())
+	{
 		navUrl = selectedUrl;
+	}
 
 	if ((enterPressed || goPressed) && !navUrl.empty())
 	{
@@ -141,7 +160,9 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 	}
 
 	if (m_suggestions.HasSuggestions() && (isActive || m_suggestions.IsDropdownHovered()))
+	{
 		m_suggestions.RenderDropdown(tab, inputMin, inputMax);
+	}
 }
 
 int AddressBar::StringResizeCallback(ImGuiInputTextCallbackData* data)
@@ -152,5 +173,6 @@ int AddressBar::StringResizeCallback(ImGuiInputTextCallbackData* data)
 		str->resize(data->BufTextLen);
 		data->Buf = str->data();
 	}
+
 	return 0;
 }

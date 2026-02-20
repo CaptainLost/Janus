@@ -1,6 +1,6 @@
 #pragma once
 
-#include "../Browser/TabManager2.h"
+#include "../Browser/TabManager.h"
 #include "../History/HistoryManager.h"
 #include "AddressBar.h"
 #include "../History/HistoryWindow.h"
@@ -15,8 +15,9 @@ class BrowserViewport
 public:
 	explicit BrowserViewport(const std::string& uniqueId = "main");
 
-	void Render(TabManager2& tabManager);
-	void UpdateBrowserImage(BrowserTab2& tab);
+	void Render(TabManager& tabManager);
+	void UpdateBrowserImage(Tab& tab);
+	void UpdateFaviconImage(Tab& tab);
 
 	void SetHistoryManager(HistoryManager* hm)
 	{
@@ -27,10 +28,11 @@ public:
 	void OpenHistoryWindow() { m_historyWindow.Open(); }
 
 private:
-	void RenderTabBar(TabManager2& tabManager);
-	void RenderTabContent(BrowserTab2& tab);
-	void RenderBrowserContent(BrowserTab2& tab);
-	void ForwardInputToBrowser(BrowserTab2& tab, ImVec2 imagePos);
+	void RenderTabBar(TabManager& tabManager);
+	void DrawFaviconInTab(Tab& tab);
+	void RenderTabContent(Tab& tab);
+	void RenderBrowserContent(Tab& tab);
+	void ForwardInputToBrowser(Tab& tab, ImVec2 imagePos);
 
 	std::string m_uniqueId;
 	AddressBar m_addressBar;

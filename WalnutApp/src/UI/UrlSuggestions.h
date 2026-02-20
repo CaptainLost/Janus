@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../History/HistoryManager.h"
-#include "../Browser/BrowserTab2.h"
+#include "../Browser/Tab.h"
 
 #include "imgui.h"
 
@@ -13,12 +13,15 @@ class UrlSuggestions
 public:
 	void Update(const std::string& query, HistoryManager* history);
 	void HandleKeyboard();
-	void RenderDropdown(BrowserTab2* tab, ImVec2 inputMin, ImVec2 inputMax);
+	void RenderDropdown(Tab* tab, ImVec2 inputMin, ImVec2 inputMax);
 	void Clear();
 
 	bool HasSuggestions() const { return !m_suggestions.empty(); }
 	bool IsDropdownHovered() const { return m_dropdownHovered; }
 	std::string GetSelectedUrl() const;
+
+	void SelectNextSuggestion();
+	void SelectPreviousSuggestion();
 
 private:
 	std::vector<HistoryEntry> m_suggestions;

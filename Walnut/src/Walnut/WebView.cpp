@@ -2,6 +2,7 @@
 
 #include "include/cef_app.h"
 #include "include/cef_browser.h"
+#include "include/cef_image.h"
 
 #include <algorithm>
 
@@ -10,6 +11,39 @@
 #else
 #include <thread>
 #endif
+
+namespace {
+
+class FaviconDownloadCallback : public CefDownloadImageCallback
+{
+public:
+	explicit FaviconDownloadCallback(Walnut::WebView* webView) : m_webView(webView) {}
+
+	void OnDownloadImageFinished(const CefString& /*imageUrl*/, int httpStatusCode, CefRefPtr<CefImage> image) override
+	{
+		if (!image || httpStatusCode != 200)
+			return;
+
+		int width = 0, height = 0;
+		CefRefPtr<CefBinaryValue> pixels = image->GetAsBitmap(
+			1.0f, CEF_COLOR_TYPE_RGBA_8888, CEF_ALPHA_TYPE_POSTMULTIPLIED, width, height);
+
+		if (!pixels || width <= 0 || height <= 0)
+			return;
+
+		size_t dataSize = pixels->GetSize();
+		std::vector<uint8_t> data(dataSize);
+		pixels->GetData(data.data(), dataSize, 0);
+
+		m_webView->SetFaviconData(std::move(data), width, height);
+	}
+
+private:
+	Walnut::WebView* m_webView;
+	IMPLEMENT_REFCOUNTING(FaviconDownloadCallback);
+};
+
+} // anonymous namespace
 
 namespace Walnut {
 
@@ -125,6 +159,38 @@ namespace Walnut {
 		return true;
 	}
 
+	bool WebView::GetFaviconPixels(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight)
+	{
+		std::lock_guard<std::mutex> lock(m_FaviconMutex);
+		if (!m_FaviconDirty)
+			return false;
+
+		outBuffer = m_FaviconPixels;
+		outWidth  = m_FaviconWidth;
+		outHeight = m_FaviconHeight;
+		m_FaviconDirty = false;
+		return true;
+	}
+
+	void WebView::SetFaviconData(std::vector<uint8_t> pixels, int width, int height)
+	{
+		std::lock_guard<std::mutex> lock(m_FaviconMutex);
+		m_FaviconPixels = std::move(pixels);
+		m_FaviconWidth  = width;
+		m_FaviconHeight = height;
+		m_FaviconDirty  = true;
+	}
+
+	void WebView::SetAddressChangeCallback(std::function<void(const std::string&)> callback)
+	{
+		m_onAddressChange = std::move(callback);
+	}
+
+	void WebView::SetBeforeBrowseCallback(std::function<bool(const std::string&)> callback)
+	{
+		m_onBeforeBrowse = std::move(callback);
+	}
+
 	CefRefPtr<CefBrowser> WebView::GetBrowser() const
 	{
 		return m_Browser;
@@ -153,7 +219,7 @@ namespace Walnut {
 		const size_t bufferSize = static_cast<size_t>(width) * height * 4;
 		m_PixelBuffer.resize(bufferSize);
 
-		// CEF delivers BGRA — convert to RGBA for Vulkan / ImGui.
+		// CEF delivers BGRA ï¿½ convert to RGBA for Vulkan / ImGui.
 		const uint8_t* src = static_cast<const uint8_t*>(buffer);
 		for (size_t i = 0; i < bufferSize; i += 4)
 		{
@@ -203,11 +269,18 @@ namespace Walnut {
 	                              CefRefPtr<CefFrame> frame,
 	                              const CefString& url)
 	{
-		if (frame->IsMain())
+		if (!frame->IsMain())
+			return;
+
+		std::string urlStr;
 		{
 			std::lock_guard<std::mutex> lock(m_StateMutex);
 			m_CurrentURL = url.ToString();
+			urlStr = m_CurrentURL;
 		}
+
+		if (m_onAddressChange)
+			m_onAddressChange(urlStr);
 	}
 
 	void WebView::OnTitleChange(CefRefPtr<CefBrowser> /*browser*/,
@@ -215,6 +288,36 @@ namespace Walnut {
 	{
 		std::lock_guard<std::mutex> lock(m_StateMutex);
 		m_Title = title.ToString();
+	}
+
+	// -------------------------------------------------------------------------
+	// CefRequestHandler
+	// -------------------------------------------------------------------------
+
+	bool WebView::OnBeforeBrowse(CefRefPtr<CefBrowser> /*browser*/,
+	                             CefRefPtr<CefFrame> frame,
+	                             CefRefPtr<CefRequest> request,
+	                             bool /*userGesture*/,
+	                             bool /*isRedirect*/)
+	{
+		if (!frame->IsMain())
+			return false;
+
+		if (m_onBeforeBrowse)
+			return m_onBeforeBrowse(request->GetURL().ToString());
+
+		return false;
+	}
+
+	void WebView::OnFaviconURLChange(CefRefPtr<CefBrowser> /*browser*/,
+	                                 const std::vector<CefString>& iconURLs)
+	{
+		if (iconURLs.empty() || !m_Browser)
+			return;
+
+		m_Browser->GetHost()->DownloadImage(
+			iconURLs[0], true, 0, false,
+			new FaviconDownloadCallback(this));
 	}
 
 } // namespace Walnut

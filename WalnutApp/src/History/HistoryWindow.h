@@ -1,7 +1,7 @@
 #pragma once
 
 #include "HistoryManager.h"
-#include "../Browser/TabManager2.h"
+#include "../Browser/TabManager.h"
 
 #include "imgui.h"
 
@@ -15,7 +15,7 @@ class HistoryWindow
 public:
 	void Open();
 	bool IsOpen() const { return m_open; }
-	void Render(TabManager2& tabManager, HistoryManager& history, ImGuiID dockspaceId);
+	void Render(TabManager& tabManager, HistoryManager& history, ImGuiID dockspaceId);
 
 private:
 	enum class PendingDelete { None, Selected, All };

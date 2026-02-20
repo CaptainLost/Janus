@@ -1,23 +1,28 @@
 #include "Sidebar.h"
+#include "../Browser/SavedTab.h"
 #include "../Utils/UrlUtils.h"
 
 #include "imgui.h"
 #include "IconsFontAwesome6.h"
 
-#include <unordered_set>
-
 static std::string BuildSavedEntryLabel(const std::string& baseUrl, const std::string& currentUrl)
 {
 	std::string host = UrlUtils::GetHost(baseUrl);
 	if (host.empty())
+	{
 		host = baseUrl;
+	}
 
 	if (currentUrl.empty())
+	{
 		return host;
+	}
 
 	std::string path = UrlUtils::GetPath(currentUrl);
 	if (path == "/" || path.empty())
+	{
 		return host;
+	}
 
 	return host + " " + path;
 }
@@ -25,14 +30,19 @@ static std::string BuildSavedEntryLabel(const std::string& baseUrl, const std::s
 static std::string Truncate(const std::string& text, size_t maxLength)
 {
 	if (text.size() <= maxLength)
+	{
 		return text;
+	}
+
 	return text.substr(0, maxLength - 3) + "...";
 }
 
-static std::string BuildTemporaryTabLabel(const BrowserTab2& tab)
+static std::string BuildTemporaryTabLabel(const Tab& tab)
 {
 	if (!tab.IsOpen())
+	{
 		return ICON_FA_FILE " New Tab";
+	}
 
 	Walnut::WebViewState state = tab.GetWebViewState();
 	const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
@@ -47,19 +57,21 @@ void Sidebar::Load(SavedTabsManager& savedTabsManager)
 	m_savedEntries = savedTabsManager.GetAll();
 }
 
-BrowserTab2* Sidebar::ResolveTab(int dbId, TabManager2& tabManager)
+SavedTab* Sidebar::FindSavedTab(int dbId, TabManager& tabManager)
 {
-	auto it = m_savedDbIdToTabId.find(dbId);
-	if (it == m_savedDbIdToTabId.end())
-		return nullptr;
+	for (const auto& tabPtr : tabManager.Tabs())
+	{
+		SavedTab* savedTab = dynamic_cast<SavedTab*>(tabPtr.get());
+		if (savedTab && savedTab->GetDbId() == dbId && savedTab->IsSaved())
+		{
+			return savedTab;
+		}
+	}
 
-	BrowserTab2* tab = tabManager.GetTab(it->second);
-	if (!tab)
-		m_savedDbIdToTabId.erase(it);
-	return tab;
+	return nullptr;
 }
 
-void Sidebar::Render(TabManager2& tabManager, SavedTabsManager& savedTabsManager)
+void Sidebar::Render(TabManager& tabManager, SavedTabsManager& savedTabsManager)
 {
 	ImGui::Begin("##Sidebar", nullptr,
 		ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoTitleBar);
@@ -74,12 +86,14 @@ void Sidebar::Render(TabManager2& tabManager, SavedTabsManager& savedTabsManager
 
 	ImGui::Spacing();
 	if (ImGui::Button(ICON_FA_PLUS " New Tab", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+	{
 		tabManager.AddTab();
+	}
 
 	ImGui::End();
 }
 
-void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& savedTabsManager)
+void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& savedTabsManager)
 {
 	ImGui::TextColored(ImVec4(0.9f, 0.8f, 0.4f, 1.0f), ICON_FA_BOOKMARK " Saved");
 	ImGui::Separator();
@@ -90,21 +104,14 @@ void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& save
 		const SavedTabRecord& entry = m_savedEntries[i];
 		ImGui::PushID(entry.dbId);
 
-		BrowserTab2* tab = ResolveTab(entry.dbId, tabManager);
+		SavedTab* savedTab = FindSavedTab(entry.dbId, tabManager);
+		Tab* tab = savedTab;
 
 		if (tab && tab->IsOpen())
 		{
 			Walnut::WebViewState state = tab->GetWebViewState();
-			if (UrlUtils::IsHttp(state.URL))
-			{
-				if (UrlUtils::IsSameDomain(UrlUtils::GetHost(state.URL), UrlUtils::GetHost(entry.baseUrl)))
-					m_savedLastUrls[entry.dbId] = state.URL;
-				else if (!state.IsLoading)
-				{
-					m_savedDbIdToTabId.erase(entry.dbId);
-					tab = nullptr;
-				}
-			}
+			if (!state.URL.empty())
+				m_savedLastUrls[entry.dbId] = state.URL;
 		}
 
 		bool isTabOpen = (tab != nullptr);
@@ -126,26 +133,41 @@ void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& save
 
 		bool isActive = isTabOpen && (tab->GetId() == tabManager.GetActiveTabId());
 		if (isActive)
+		{
 			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+		}
 
 		if (ImGui::Button(label.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
 		{
 			if (!isTabOpen)
 			{
-				int newTabId = tabManager.AddTab();
-				tabManager.GetTab(newTabId)->Open(entry.baseUrl);
-				m_savedDbIdToTabId[entry.dbId] = newTabId;
-				tab = tabManager.GetTab(newTabId);
+				int newTabId = tabManager.AddSavedTab(entry.dbId, entry.baseUrl);
+				Tab* newTab = tabManager.GetTab(newTabId);
+				newTab->Open(entry.baseUrl);
+
+				TabManager* tabManagerPtr = &tabManager;
+				static_cast<SavedTab*>(newTab)->SetDomainExitHandler([tabManagerPtr](const std::string& escapedUrl) {
+					int id = tabManagerPtr->AddTab();
+					tabManagerPtr->GetTab(id)->Open(escapedUrl);
+					tabManagerPtr->SetActiveTab(id);
+				});
+
+				tab = newTab;
 			}
+
 			tabManager.SetActiveTab(tab->GetId());
 		}
 
 		if (isActive)
+		{
 			ImGui::PopStyleColor();
+		}
 
 		ImGui::SameLine();
 		if (ImGui::SmallButton(ICON_FA_XMARK))
+		{
 			removeSavedIndex = i;
+		}
 
 		ImGui::PopID();
 	}
@@ -153,11 +175,11 @@ void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& save
 	if (removeSavedIndex >= 0)
 	{
 		const SavedTabRecord& entry = m_savedEntries[removeSavedIndex];
-		auto it = m_savedDbIdToTabId.find(entry.dbId);
-		if (it != m_savedDbIdToTabId.end())
+		SavedTab* savedTab = FindSavedTab(entry.dbId, tabManager);
+
+		if (savedTab)
 		{
-			tabManager.RemoveTab(it->second);
-			m_savedDbIdToTabId.erase(it);
+			tabManager.RemoveTab(savedTab->GetId());
 		}
 		else
 		{
@@ -169,7 +191,9 @@ void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& save
 	ImGui::Spacing();
 
 	if (ImGui::Button(ICON_FA_PLUS " Add Saved", ImVec2(ImGui::GetContentRegionAvail().x, 0)))
+	{
 		ImGui::OpenPopup("AddSavedTab");
+	}
 
 	RenderAddSavedPopup(savedTabsManager);
 }
@@ -177,7 +201,9 @@ void Sidebar::RenderSavedSection(TabManager2& tabManager, SavedTabsManager& save
 void Sidebar::RenderAddSavedPopup(SavedTabsManager& savedTabsManager)
 {
 	if (!ImGui::BeginPopupModal("AddSavedTab", nullptr, ImGuiWindowFlags_AlwaysAutoResize))
+	{
 		return;
+	}
 
 	ImGui::Text("Base URL:");
 	ImGui::SetNextItemWidth(260.0f);
@@ -196,46 +222,55 @@ void Sidebar::RenderAddSavedPopup(SavedTabsManager& savedTabsManager)
 		m_savedUrlBuffer[0] = '\0';
 		ImGui::CloseCurrentPopup();
 	}
+
 	ImGui::EndPopup();
 }
 
-void Sidebar::RenderTemporarySection(TabManager2& tabManager)
+void Sidebar::RenderTemporarySection(TabManager& tabManager)
 {
 	ImGui::TextColored(ImVec4(0.6f, 0.9f, 0.6f, 1.0f), ICON_FA_CLOCK " Temporary");
 	ImGui::Separator();
 
-	std::unordered_set<int> savedTabIds;
-	for (const auto& [dbId, tabId] : m_savedDbIdToTabId)
-		savedTabIds.insert(tabId);
-
 	int removeId = -1;
 	for (const auto& tabPtr : tabManager.Tabs())
 	{
-		if (savedTabIds.count(tabPtr->GetId()))
+		if (tabPtr->IsSaved())
+		{
 			continue;
+		}
 
-		auto& tab = *tabPtr;
+		Tab& tab = *tabPtr;
 		ImGui::PushID(&tab);
 
 		std::string title = BuildTemporaryTabLabel(tab);
 
 		bool isActive = (tab.GetId() == tabManager.GetActiveTabId());
 		if (isActive)
+		{
 			ImGui::PushStyleColor(ImGuiCol_Button, ImGui::GetStyleColorVec4(ImGuiCol_ButtonActive));
+		}
 
 		if (ImGui::Button(title.c_str(), ImVec2(ImGui::GetContentRegionAvail().x - 30, 0)))
+		{
 			tabManager.SetActiveTab(tab.GetId());
+		}
 
 		if (isActive)
+		{
 			ImGui::PopStyleColor();
+		}
 
 		ImGui::SameLine();
 		if (ImGui::SmallButton(ICON_FA_XMARK))
+		{
 			removeId = tab.GetId();
+		}
 
 		ImGui::PopID();
 	}
 
 	if (removeId >= 0)
+	{
 		tabManager.RemoveTab(removeId);
+	}
 }

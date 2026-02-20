@@ -25,17 +25,25 @@ void UrlSuggestions::Update(const std::string& query, HistoryManager* history)
 void UrlSuggestions::HandleKeyboard()
 {
 	if (m_suggestions.empty())
+	{
 		return;
+	}
 
-	if (ImGui::IsKeyPressed(ImGuiKey_DownArrow, true))
-		m_selectedSuggestion = std::min(m_selectedSuggestion + 1, (int)m_suggestions.size() - 1);
-	if (ImGui::IsKeyPressed(ImGuiKey_UpArrow, true))
-		m_selectedSuggestion = std::max(m_selectedSuggestion - 1, -1);
 	if (ImGui::IsKeyPressed(ImGuiKey_Escape))
+	{
 		Clear();
+	}
+	else if (ImGui::IsKeyPressed(ImGuiKey_UpArrow, true))
+	{
+		SelectPreviousSuggestion();
+	}
+	else if (ImGui::IsKeyPressed(ImGuiKey_DownArrow, true))
+	{
+		SelectNextSuggestion();
+	}
 }
 
-void UrlSuggestions::RenderDropdown(BrowserTab2* tab, ImVec2 inputMin, ImVec2 inputMax)
+void UrlSuggestions::RenderDropdown(Tab* tab, ImVec2 inputMin, ImVec2 inputMax)
 {
 	if (m_suggestions.empty())
 		return;
@@ -96,4 +104,14 @@ std::string UrlSuggestions::GetSelectedUrl() const
 	if (m_selectedSuggestion >= 0 && m_selectedSuggestion < (int)m_suggestions.size())
 		return m_suggestions[m_selectedSuggestion].url;
 	return {};
+}
+
+void UrlSuggestions::SelectNextSuggestion()
+{
+	m_selectedSuggestion = std::min(m_selectedSuggestion + 1, (int)m_suggestions.size() - 1);
+}
+
+void UrlSuggestions::SelectPreviousSuggestion()
+{
+	m_selectedSuggestion = std::max(m_selectedSuggestion - 1, -1);
 }

@@ -1,7 +1,7 @@
 #pragma once
 
-#include "../Browser/TabManager2.h"
-#include "../Browser/BrowserTab2.h"
+#include "../Browser/TabManager.h"
+#include "../Browser/Tab.h"
 #include "../History/HistoryManager.h"
 #include "UrlSuggestions.h"
 
@@ -14,8 +14,8 @@ class AddressBar
 public:
 	AddressBar() = default;
 
-	void Render(TabManager2& tabManager);
-	void RenderForTab(BrowserTab2* tab);
+	void Render(TabManager& tabManager);
+	void RenderForTab(Tab* tab);
 
 	void SetHistoryManager(HistoryManager* hm) { m_history = hm; }
 
@@ -24,8 +24,8 @@ public:
 	static int StringResizeCallback(ImGuiInputTextCallbackData* data);
 
 private:
-	void RenderNavigationButtons(BrowserTab2* tab);
-	void RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused);
+	void RenderNavigationButtons(Tab* tab);
+	void RenderUrlInput(Tab* tab, bool& urlBarFocused);
 
 	HistoryManager* m_history = nullptr;
 	UrlSuggestions m_suggestions;
