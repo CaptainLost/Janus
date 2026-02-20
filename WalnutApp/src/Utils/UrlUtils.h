@@ -36,6 +36,11 @@ inline bool IsHttp(const std::string& url)
 		(url.substr(0, 7) == "http://" || url.substr(0, 8) == "https://");
 }
 
+inline bool IsHttps(const std::string& url)
+{
+	return url.size() >= 8 && url.substr(0, 8) == "https://";
+}
+
 inline bool IsSameDomain(const std::string& hostA, const std::string& hostB)
 {
 	if (hostA == hostB)

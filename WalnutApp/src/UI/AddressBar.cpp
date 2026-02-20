@@ -1,4 +1,5 @@
 #include "AddressBar.h"
+#include "../Utils/UrlUtils.h"
 
 #include <algorithm>
 #include <cstring>
@@ -80,6 +81,17 @@ void AddressBar::RenderUrlInput(BrowserTab2* tab, bool& urlBarFocused)
 		state = tab->GetWebViewState();
 
 	ImGui::SameLine();
+
+	if (UrlUtils::IsHttps(state.URL))
+	{
+		ImGui::TextColored(ImVec4(0.4f, 0.85f, 0.4f, 1.0f), ICON_FA_LOCK);
+		ImGui::SameLine();
+	}
+	else if (UrlUtils::IsHttp(state.URL))
+	{
+		ImGui::TextColored(ImVec4(0.9f, 0.6f, 0.2f, 1.0f), ICON_FA_LOCK_OPEN);
+		ImGui::SameLine();
+	}
 
 	std::string& url = tab->GetUrlInput();
 	if (url.capacity() < 2048)
