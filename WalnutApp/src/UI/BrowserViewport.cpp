@@ -132,11 +132,28 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 	ImGuiID dockspaceId = ImGui::GetID("MainViewport");
 	ImGui::DockSpace(dockspaceId);
 
+	ImGuiID targetDockId = dockspaceId;
+	{
+		auto it = m_tabWindowIds.find(activeTabId);
+		if (it != m_tabWindowIds.end())
+		{
+			ImGuiWindow* activeWindow = ImGui::FindWindowByID(it->second);
+			if (activeWindow && activeWindow->DockId != 0)
+			{
+				targetDockId = activeWindow->DockId;
+			}
+		}
+	}
+
 	for (size_t i = 0; i < tabManager.Tabs().size();)
 	{
 		std::shared_ptr<Tab> tab = tabManager.Tabs()[i];
 
-		ImGui::SetNextWindowDockID(dockspaceId, ImGuiCond_Once);
+		if (!m_dockedTabIds.count(tab->GetId()))
+		{
+			ImGui::SetNextWindowDockID(targetDockId, ImGuiCond_Always);
+			m_dockedTabIds.insert(tab->GetId());
+		}
 
 		bool isOpen = true;
 
@@ -144,7 +161,10 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 		const char* tabIcon = !tab->IsOpen() ? ICON_FA_FILE : (tabState.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE);
 		std::string windowTitle = std::string(tabIcon) + " " + tab->GetTabLabel() + "###TabWindow_" + std::to_string(tab->GetId());
 
-		bool contentVisible = ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoCollapse);
+		bool contentVisible = ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
+
+		m_tabWindowIds[tab->GetId()] = ImGui::GetCurrentWindow()->ID;
+
 		DrawFaviconInTab(*tab);
 
 		if (contentVisible)
@@ -164,6 +184,8 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 		if (!isOpen)
 		{
 			tabManager.RemoveTab(tab->GetId());
+			m_dockedTabIds.erase(tab->GetId());
+			m_tabWindowIds.erase(tab->GetId());
 
 			continue;
 		}

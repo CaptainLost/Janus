@@ -9,6 +9,8 @@
 
 #include <functional>
 #include <string>
+#include <unordered_map>
+#include <unordered_set>
 
 class BrowserViewport
 {
@@ -38,4 +40,7 @@ private:
 	AddressBar m_addressBar;
 	HistoryWindow m_historyWindow;
 	HistoryManager* m_historyManager = nullptr;
+
+	std::unordered_set<int> m_dockedTabIds;
+	std::unordered_map<int, ImGuiID> m_tabWindowIds;
 };
