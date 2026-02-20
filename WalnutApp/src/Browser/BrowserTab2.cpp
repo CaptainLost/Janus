@@ -24,9 +24,13 @@ void BrowserTab2::Open(const std::string& url)
 		return;
 	}
 
+	std::string finalUrl = url;
+	if (finalUrl.find("://") == std::string::npos)
+		finalUrl = "https://" + finalUrl;
+
 	m_webView = new Walnut::WebView(m_viewWidth, m_viewHeight);
-	m_webView->Create(url);
-	m_urlInput = url;
+	m_webView->Create(finalUrl);
+	m_urlInput = finalUrl;
 }
 
 void BrowserTab2::Close()

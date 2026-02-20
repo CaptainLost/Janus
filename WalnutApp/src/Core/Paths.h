@@ -8,6 +8,7 @@ namespace Paths
 {
 	inline constexpr std::string_view kAppName = "Janus";
 	inline constexpr std::string_view kHistoryDbName = "history.db";
+	inline constexpr std::string_view kSavedTabsDbName = "saved_tabs.db";
 
 	inline const std::filesystem::path& AppDataDir()
 	{
@@ -30,5 +31,10 @@ namespace Paths
 	inline std::filesystem::path HistoryDb()
 	{
 		return AppDataDir() / kHistoryDbName;
+	}
+
+	inline std::filesystem::path SavedTabsDb()
+	{
+		return AppDataDir() / kSavedTabsDbName;
 	}
 }

@@ -4,11 +4,11 @@
 
 #include "Browser/TabManager2.h"
 #include "UI/BrowserViewport.h"
+#include "UI/Sidebar.h"
 #include "History/HistoryManager.h"
 
 #include <string>
 #include <unordered_map>
-#include <vector>
 
 class BrowserLayer : public Walnut::Layer
 {
@@ -28,6 +28,8 @@ private:
 	TabManager2 m_tabManager;
 	BrowserViewport m_viewport{"main"};
 	HistoryManager m_historyManager;
+	SavedTabsManager m_savedTabsManager;
+	Sidebar m_sidebar;
 
 	std::unordered_map<int, std::string> m_lastRecordedUrls;
 
