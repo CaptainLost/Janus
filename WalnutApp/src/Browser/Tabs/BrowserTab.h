@@ -18,7 +18,23 @@ public:
 	int GetViewHeight() const override;
 	void SetViewSize(int width, int height) override;
 
-	CefRefPtr<Walnut::WebView> GetWebView() const override;
+	void GoBack() override;
+	void GoForward() override;
+	void ReloadPage() override;
+	void StopLoading() override;
+
+	bool GetContextMenuRequest(Walnut::ContextMenuRequest& out) override;
+	void SetPendingDownloadPath(const std::string& path) override;
+	void StartDownload(const std::string& url) override;
+	void BrowserCut() override;
+	void BrowserCopy() override;
+	void BrowserPaste() override;
+	void BrowserSelectAll() override;
+
+	bool UpdateBrowserImage() override;
+	bool UpdateFaviconImage() override;
+	void ForwardInput(int mouseX, int mouseY, bool isHovered, bool isFocused) override;
+
 	std::shared_ptr<Walnut::Image> GetBrowserImage() const override;
 	void SetBrowserImage(std::shared_ptr<Walnut::Image> image) override;
 	std::shared_ptr<Walnut::Image> GetFaviconImage() const override;
@@ -29,6 +45,9 @@ public:
 	const std::string& GetUrlInput() const override;
 
 	std::string GetTabLabel() const override;
+
+protected:
+	CefRefPtr<Walnut::WebView> GetWebView() const;
 
 private:
 	int m_id = -1;

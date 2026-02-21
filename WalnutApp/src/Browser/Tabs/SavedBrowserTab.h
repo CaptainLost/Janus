@@ -2,10 +2,10 @@
 
 #include "BrowserTab.h"
 
-class SavedTab : public BrowserTab
+class SavedBrowserTab : public BrowserTab
 {
 public:
-	SavedTab(int id, int dbId, const std::string& baseUrl);
+	SavedBrowserTab(int id, int dbId, const std::string& baseUrl);
 
 	void Open(const std::string& url) override;
 

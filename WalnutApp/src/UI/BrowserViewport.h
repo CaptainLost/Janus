@@ -18,8 +18,6 @@ public:
 	explicit BrowserViewport(const std::string& uniqueId = "main");
 
 	void Render(TabManager& tabManager);
-	void UpdateBrowserImage(Tab& tab);
-	void UpdateFaviconImage(Tab& tab);
 
 	void SetHistoryManager(HistoryManager* hm)
 	{

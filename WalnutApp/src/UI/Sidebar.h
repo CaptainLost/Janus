@@ -6,7 +6,7 @@
 #include <unordered_map>
 #include <vector>
 
-class SavedTab;
+class SavedBrowserTab;
 
 class Sidebar
 {
@@ -19,7 +19,7 @@ private:
 	void RenderAddSavedPopup(SavedTabsManager& savedTabsManager);
 	void RenderTemporarySection(TabManager& tabManager);
 
-	SavedTab* FindSavedTab(int dbId, TabManager& tabManager);
+	SavedBrowserTab* FindSavedTab(int dbId, TabManager& tabManager);
 
 	std::vector<SavedTabRecord> m_savedEntries;
 	std::unordered_map<int, std::string> m_savedLastUrls;

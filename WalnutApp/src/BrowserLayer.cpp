@@ -45,8 +45,8 @@ void BrowserLayer::OnUpdate(float ts)
 			continue;
 		}
 
-		m_viewport->UpdateBrowserImage(*tab);
-		m_viewport->UpdateFaviconImage(*tab);
+		tab->UpdateBrowserImage();
+		tab->UpdateFaviconImage();
 
 		Walnut::WebViewState state = tab->GetWebViewState();
 		if (!state.IsLoading && !state.URL.empty() && !state.Title.empty())

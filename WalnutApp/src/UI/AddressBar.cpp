@@ -38,27 +38,25 @@ void AddressBar::RenderNavigationButtons(Tab* tab)
 {
 	bool isOpen = tab->IsOpen();
 	Walnut::WebViewState state;
-	CefRefPtr<Walnut::WebView> webView;
 
 	if (isOpen)
 	{
 		state = tab->GetWebViewState();
-		webView = tab->GetWebView();
 	}
 
 	ImGui::BeginDisabled(!isOpen || !state.CanGoBack);
-	if (ImGui::Button(ICON_FA_ANGLE_LEFT "##navigationPrevious") && webView)
+	if (ImGui::Button(ICON_FA_ANGLE_LEFT "##navigationPrevious"))
 	{
-		webView->GoBack();
+		tab->GoBack();
 	}
 	ImGui::EndDisabled();
 
 	ImGui::SameLine();
 
 	ImGui::BeginDisabled(!isOpen || !state.CanGoForward);
-	if (ImGui::Button(ICON_FA_ANGLE_RIGHT "##navigationNext") && webView)
+	if (ImGui::Button(ICON_FA_ANGLE_RIGHT "##navigationNext"))
 	{
-		webView->GoForward();
+		tab->GoForward();
 	}
 	ImGui::EndDisabled();
 
@@ -66,17 +64,17 @@ void AddressBar::RenderNavigationButtons(Tab* tab)
 
 	if (isOpen && state.IsLoading)
 	{
-		if (ImGui::Button(ICON_FA_XMARK "##addressClose") && webView)
+		if (ImGui::Button(ICON_FA_XMARK "##addressClose"))
 		{
-			webView->StopLoading();
+			tab->StopLoading();
 		}
 	}
 	else
 	{
 		ImGui::BeginDisabled(!isOpen);
-		if (ImGui::Button(ICON_FA_ROTATE_RIGHT "##refresh") && webView)
+		if (ImGui::Button(ICON_FA_ROTATE_RIGHT "##refresh"))
 		{
-			webView->Reload();
+			tab->ReloadPage();
 		}
 		ImGui::EndDisabled();
 	}

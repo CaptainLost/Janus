@@ -1,6 +1,6 @@
 #include "TabManager.h"
 #include "Tabs/BrowserTab.h"
-#include "Tabs/SavedTab.h"
+#include "Tabs/SavedBrowserTab.h"
 
 #include <algorithm>
 
@@ -34,7 +34,7 @@ int TabManager::AddSavedTab(int dbId, const std::string& baseUrl)
 		SetActiveTab(id);
 	}
 
-	m_tabs.emplace_back(std::make_shared<SavedTab>(id, dbId, baseUrl));
+	m_tabs.emplace_back(std::make_shared<SavedBrowserTab>(id, dbId, baseUrl));
 
 	return id;
 }

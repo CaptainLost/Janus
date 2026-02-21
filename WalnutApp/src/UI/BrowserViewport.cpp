@@ -1,9 +1,6 @@
 #include "BrowserViewport.h"
-#include "../Browser/CefInputBridge.h"
 #include "../Utils/UrlUtils.h"
 #include "../Utils/FileDialogs.h"
-
-#include "Walnut/Image.h"
 
 #include "imgui.h"
 #include "imgui_internal.h"
@@ -23,66 +20,6 @@ void BrowserViewport::Render(TabManager& tabManager)
 	RenderTabBar(tabManager);
 
 	ImGui::PopID();
-}
-
-void BrowserViewport::UpdateBrowserImage(Tab& tab)
-{
-	auto webView = tab.GetWebView();
-	if (!webView)
-	{
-		return;
-	}
-
-	std::vector<uint8_t> buffer;
-	int width = 0, height = 0;
-
-	if (!webView->GetPixelBuffer(buffer, width, height) || width <= 0 || height <= 0)
-	{
-		return;
-	}
-
-	auto image = tab.GetBrowserImage();
-
-	bool needsRecreate =
-		!image ||
-		image->GetWidth()  != static_cast<uint32_t>(width) ||
-		image->GetHeight() != static_cast<uint32_t>(height);
-
-	if (needsRecreate)
-	{
-		image = std::make_shared<Walnut::Image>(
-			static_cast<uint32_t>(width),
-			static_cast<uint32_t>(height),
-			Walnut::ImageFormat::RGBA);
-
-		tab.SetBrowserImage(image);
-	}
-
-	image->SetData(buffer.data());
-}
-
-void BrowserViewport::UpdateFaviconImage(Tab& tab)
-{
-	auto webView = tab.GetWebView();
-	if (!webView)
-	{
-		return;
-	}
-
-	std::vector<uint8_t> buffer;
-	int width = 0, height = 0;
-	if (!webView->GetFaviconPixels(buffer, width, height) || width <= 0 || height <= 0)
-	{
-		return;
-	}
-
-	auto image = std::make_shared<Walnut::Image>(
-		static_cast<uint32_t>(width),
-		static_cast<uint32_t>(height),
-		Walnut::ImageFormat::RGBA);
-
-	image->SetData(buffer.data());
-	tab.SetFaviconImage(image);
 }
 
 void BrowserViewport::DrawFaviconInTab(Tab& tab)
@@ -234,9 +171,8 @@ void BrowserViewport::RenderBrowserContent(Tab& tab, TabManager& tabManager)
 
 		ForwardInputToBrowser(tab, imagePos);
 
-		auto webView = tab.GetWebView();
 		Walnut::ContextMenuRequest contextRequest;
-		if (webView && webView->GetContextMenuRequest(contextRequest))
+		if (tab.GetContextMenuRequest(contextRequest))
 		{
 			m_activeContextMenu.params = contextRequest;
 			m_activeContextMenu.screenPosition = {
@@ -305,8 +241,8 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 			std::string savePath = FileDialogs::ShowSaveImageDialog(params.sourceUrl);
 			if (!savePath.empty())
 			{
-				tab.GetWebView()->SetPendingDownloadPath(savePath);
-				tab.GetWebView()->GetBrowser()->GetHost()->StartDownload(params.sourceUrl);
+				tab.SetPendingDownloadPath(savePath);
+				tab.StartDownload(params.sourceUrl);
 			}
 		}
 
@@ -319,12 +255,12 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 		{
 			if (ImGui::MenuItem("Cut"))
 			{
-				tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Cut();
+				tab.BrowserCut();
 			}
 
 			if (ImGui::MenuItem("Copy"))
 			{
-				tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Copy();
+				tab.BrowserCopy();
 			}
 
 			ImGui::Separator();
@@ -332,12 +268,12 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 
 		if (ImGui::MenuItem("Paste"))
 		{
-			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Paste();
+			tab.BrowserPaste();
 		}
 
 		if (ImGui::MenuItem("Select All"))
 		{
-			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->SelectAll();
+			tab.BrowserSelectAll();
 		}
 
 		ImGui::Separator();
@@ -346,7 +282,7 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 	{
 		if (ImGui::MenuItem("Copy"))
 		{
-			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Copy();
+			tab.BrowserCopy();
 		}
 
 		std::string searchLabel = "Search Google for \"" + params.selectionText.substr(0, 32) +
@@ -366,7 +302,7 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 	{
 		if (ImGui::MenuItem("Back"))
 		{
-			tab.GetWebView()->GoBack();
+			tab.GoBack();
 		}
 	}
 
@@ -374,13 +310,13 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 	{
 		if (ImGui::MenuItem("Forward"))
 		{
-			tab.GetWebView()->GoForward();
+			tab.GoForward();
 		}
 	}
 
 	if (ImGui::MenuItem("Reload"))
 	{
-		tab.GetWebView()->Reload();
+		tab.ReloadPage();
 	}
 
 	ImGui::Separator();
@@ -396,18 +332,6 @@ void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
 
 void BrowserViewport::ForwardInputToBrowser(Tab& tab, ImVec2 imagePos)
 {
-	auto webView = tab.GetWebView();
-	if (!webView)
-	{
-		return;
-	}
-
-	auto browser = webView->GetBrowser();
-	if (!browser)
-	{
-		return;
-	}
-
 	bool isHovered = ImGui::IsWindowHovered();
 	bool isFocused = ImGui::IsWindowFocused();
 	if (!isHovered && !isFocused)
@@ -415,12 +339,9 @@ void BrowserViewport::ForwardInputToBrowser(Tab& tab, ImVec2 imagePos)
 		return;
 	}
 
-	auto host = browser->GetHost();
 	const ImGuiIO& io = ImGui::GetIO();
-
 	int mouseX = static_cast<int>(io.MousePos.x - imagePos.x);
 	int mouseY = static_cast<int>(io.MousePos.y - imagePos.y);
 
-	CefInputBridge::ForwardMouseEvents(host, mouseX, mouseY, isHovered);
-	CefInputBridge::ForwardKeyboardEvents(host, isFocused);
+	tab.ForwardInput(mouseX, mouseY, isHovered, isFocused);
 }

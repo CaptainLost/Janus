@@ -1,5 +1,5 @@
 #include "Sidebar.h"
-#include "../Browser/Tabs/SavedTab.h"
+#include "../Browser/Tabs/SavedBrowserTab.h"
 #include "../Utils/UrlUtils.h"
 #include "../Utils/StringUtils.h"
 
@@ -46,11 +46,11 @@ void Sidebar::Load(SavedTabsManager& savedTabsManager)
 	m_savedEntries = savedTabsManager.GetAll();
 }
 
-SavedTab* Sidebar::FindSavedTab(int dbId, TabManager& tabManager)
+SavedBrowserTab* Sidebar::FindSavedTab(int dbId, TabManager& tabManager)
 {
 	for (const auto& tabPtr : tabManager.Tabs())
 	{
-		SavedTab* savedTab = dynamic_cast<SavedTab*>(tabPtr.get());
+		SavedBrowserTab* savedTab = dynamic_cast<SavedBrowserTab*>(tabPtr.get());
 		if (savedTab && savedTab->GetDbId() == dbId && savedTab->IsSaved())
 		{
 			return savedTab;
@@ -93,7 +93,7 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 		const SavedTabRecord& entry = m_savedEntries[i];
 		ImGui::PushID(entry.dbId);
 
-		SavedTab* savedTab = FindSavedTab(entry.dbId, tabManager);
+		SavedBrowserTab* savedTab = FindSavedTab(entry.dbId, tabManager);
 		Tab* tab = savedTab;
 
 		if (tab && tab->IsOpen())
@@ -137,7 +137,7 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 				newTab->Open(entry.baseUrl);
 
 				TabManager* tabManagerPtr = &tabManager;
-				static_cast<SavedTab*>(newTab)->SetDomainExitHandler([tabManagerPtr](const std::string& escapedUrl) {
+				static_cast<SavedBrowserTab*>(newTab)->SetDomainExitHandler([tabManagerPtr](const std::string& escapedUrl) {
 					int id = tabManagerPtr->AddTab();
 					tabManagerPtr->GetTab(id)->Open(escapedUrl);
 					tabManagerPtr->SetActiveTab(id);
@@ -166,7 +166,7 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 	if (removeSavedIndex >= 0)
 	{
 		const SavedTabRecord& entry = m_savedEntries[removeSavedIndex];
-		SavedTab* savedTab = FindSavedTab(entry.dbId, tabManager);
+		SavedBrowserTab* savedTab = FindSavedTab(entry.dbId, tabManager);
 
 		if (savedTab)
 		{

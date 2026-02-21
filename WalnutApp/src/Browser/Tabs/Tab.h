@@ -22,7 +22,23 @@ public:
 	virtual int GetViewHeight() const = 0;
 	virtual void SetViewSize(int width, int height) = 0;
 
-	virtual CefRefPtr<Walnut::WebView> GetWebView() const = 0;
+	virtual void GoBack() {}
+	virtual void GoForward() {}
+	virtual void ReloadPage() {}
+	virtual void StopLoading() {}
+
+	virtual bool GetContextMenuRequest(Walnut::ContextMenuRequest& out) { return false; }
+	virtual void SetPendingDownloadPath(const std::string& path) {}
+	virtual void StartDownload(const std::string& url) {}
+	virtual void BrowserCut() {}
+	virtual void BrowserCopy() {}
+	virtual void BrowserPaste() {}
+	virtual void BrowserSelectAll() {}
+
+	virtual bool UpdateBrowserImage() { return false; }
+	virtual bool UpdateFaviconImage() { return false; }
+	virtual void ForwardInput(int mouseX, int mouseY, bool isHovered, bool isFocused) {}
+
 	virtual std::shared_ptr<Walnut::Image> GetBrowserImage() const = 0;
 	virtual void SetBrowserImage(std::shared_ptr<Walnut::Image> image) = 0;
 	virtual std::shared_ptr<Walnut::Image> GetFaviconImage() const = 0;
