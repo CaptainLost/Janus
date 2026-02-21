@@ -21,9 +21,9 @@ static void TitlebarButton(const char* label)
 Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 {
 	Walnut::ApplicationSpecification spec;
-	spec.Name           = "Janus";
-	spec.Width          = 1400;
-	spec.Height         = 900;
+	spec.Name = "Janus";
+	spec.Width = 1400;
+	spec.Height = 900;
 	spec.CustomTitlebar = true;
 
 	Application* app = new Walnut::Application(spec);
@@ -46,13 +46,17 @@ Walnut::Application* Walnut::CreateApplication(int argc, char** argv)
 		ImVec2 buttonMax = ImGui::GetItemRectMax();
 
 		if (ImGui::IsItemClicked())
+		{
 			ImGui::OpenPopup("##settings_popup");
+		}
 
 		ImGui::SetNextWindowPos(ImVec2(buttonMin.x, buttonMax.y), ImGuiCond_Always, ImVec2(1.0f, 0.0f));
 		if (ImGui::BeginPopup("##settings_popup"))
 		{
 			if (ImGui::MenuItem(ICON_FA_CLOCK_ROTATE_LEFT "  History"))
+			{
 				browserLayer->OpenHistoryWindow();
+			}
 
 			ImGui::EndPopup();
 		}

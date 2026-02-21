@@ -8,7 +8,6 @@
 #include "Walnut/WebView.h"
 #include "imgui.h"
 
-#include <functional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -30,6 +29,7 @@ public:
 
 	void OpenHistoryWindow() { m_historyWindow.Open(); }
 
+private:
 	struct ActiveContextMenu
 	{
 		bool requestOpen = false;
@@ -37,7 +37,6 @@ public:
 		ImVec2 screenPosition;
 	};
 
-private:
 	void RenderTabBar(TabManager& tabManager);
 	void DrawFaviconInTab(Tab& tab);
 	void RenderTabContent(Tab& tab, TabManager& tabManager);

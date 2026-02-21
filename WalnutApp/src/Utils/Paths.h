@@ -16,15 +16,17 @@ namespace Paths
 			PWSTR raw = nullptr;
 
 			if (FAILED(SHGetKnownFolderPath(FOLDERID_RoamingAppData, 0, nullptr, &raw)))
+			{
 				return std::filesystem::current_path();
+			}
 
 			std::filesystem::path result = std::filesystem::path(raw) / kAppName;
 			CoTaskMemFree(raw);
-
 			std::filesystem::create_directories(result);
 
 			return result;
 		}();
+
 		return dir;
 	}
 
