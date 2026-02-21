@@ -84,6 +84,29 @@ namespace UrlUtils
 		return result;
 	}
 
+	inline std::string GetDomainDisplayName(const std::string& url)
+	{
+		std::string name = UrlUtils::GetHost(url);
+
+		if (name.size() > 4 && name.substr(0, 4) == "www.")
+		{
+			name = name.substr(4);
+		}
+
+		size_t dotPosition = name.find('.');
+		if (dotPosition != std::string::npos)
+		{
+			name = name.substr(0, dotPosition);
+		}
+
+		if (!name.empty())
+		{
+			name[0] = static_cast<char>(std::toupper(static_cast<unsigned char>(name[0])));
+		}
+
+		return name;
+	}
+
 	inline bool IsSameDomain(const std::string& hostA, const std::string& hostB)
 	{
 		if (hostA == hostB)

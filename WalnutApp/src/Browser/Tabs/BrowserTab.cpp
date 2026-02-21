@@ -2,6 +2,9 @@
 #include "../CefInputBridge.h"
 
 #include "../../Utils/UrlUtils.h"
+#include "../../Utils/StringUtils.h"
+
+#include <IconsFontAwesome6.h>
 
 BrowserTab::BrowserTab(int id)
 	: m_id(id)
@@ -312,7 +315,7 @@ const std::string& BrowserTab::GetUrlInput() const
 	return m_urlInput;
 }
 
-std::string BrowserTab::GetTabLabel() const
+std::string BrowserTab::GetTabBarLabel() const
 {
 	if (IsOpen())
 	{
@@ -322,4 +325,18 @@ std::string BrowserTab::GetTabLabel() const
 	}
 
 	return "Empty Tab";
+}
+
+std::string BrowserTab::GetSidebarLabel() const
+{
+	if (!IsOpen())
+	{
+		return ICON_FA_FILE " New Tab";
+	}
+
+	Walnut::WebViewState state = GetWebViewState();
+	const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
+	std::string title = state.Title.empty() ? "Loading..." : state.Title;
+
+	return StringUtils::Truncate(std::string(icon) + " " + title, 30);
 }

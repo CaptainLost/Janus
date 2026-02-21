@@ -6,40 +6,6 @@
 #include "imgui.h"
 #include "IconsFontAwesome6.h"
 
-static std::string BuildSavedEntryLabel(const std::string& baseUrl, const std::string& currentUrl)
-{
-	std::string host = UrlUtils::GetHost(baseUrl);
-	if (host.empty())
-	{
-		host = baseUrl;
-	}
-
-	if (currentUrl.empty())
-	{
-		return host;
-	}
-
-	std::string path = UrlUtils::GetPath(currentUrl);
-	if (path == "/" || path.empty())
-	{
-		return host;
-	}
-
-	return host + " " + path;
-}
-
-static std::string BuildTemporaryTabLabel(const Tab& tab)
-{
-	if (!tab.IsOpen())
-	{
-		return ICON_FA_FILE " New Tab";
-	}
-
-	Walnut::WebViewState state = tab.GetWebViewState();
-	const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
-	std::string title = state.Title.empty() ? "Loading..." : state.Title;
-	return StringUtils::Truncate(std::string(icon) + " " + title, 30);
-}
 
 void Sidebar::Load(SavedTabsManager& savedTabsManager)
 {
@@ -96,31 +62,18 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 		SavedBrowserTab* savedTab = FindSavedTab(entry.dbId, tabManager);
 		Tab* tab = savedTab;
 
-		if (tab && tab->IsOpen())
-		{
-			Walnut::WebViewState state = tab->GetWebViewState();
-			if (!state.URL.empty())
-			{
-				m_savedLastUrls[entry.dbId] = state.URL;
-			}
-		}
-
 		bool isTabOpen = (tab != nullptr);
 
 		std::string label;
 		if (!isTabOpen)
 		{
-			auto it = m_savedLastUrls.find(entry.dbId);
-			std::string lastUrl = (it != m_savedLastUrls.end()) ? it->second : "";
-			label = ICON_FA_BOOKMARK " " + BuildSavedEntryLabel(entry.baseUrl, lastUrl);
+			std::string displayName = UrlUtils::GetDomainDisplayName(entry.baseUrl);
+			label = ICON_FA_BOOKMARK " " + (displayName.empty() ? entry.baseUrl : displayName);
 		}
 		else
 		{
-			Walnut::WebViewState state = tab->GetWebViewState();
-			const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
-			label = std::string(icon) + " " + BuildSavedEntryLabel(entry.baseUrl, state.URL);
+			label = tab->GetSidebarLabel();
 		}
-		label = StringUtils::Truncate(label, 30);
 
 		bool isActive = isTabOpen && (tab->GetId() == tabManager.GetActiveTabId());
 		if (isActive)
@@ -233,7 +186,7 @@ void Sidebar::RenderTemporarySection(TabManager& tabManager)
 		Tab& tab = *tabPtr;
 		ImGui::PushID(&tab);
 
-		std::string title = BuildTemporaryTabLabel(tab);
+		std::string title = tab.GetSidebarLabel();
 
 		bool isActive = (tab.GetId() == tabManager.GetActiveTabId());
 		if (isActive)

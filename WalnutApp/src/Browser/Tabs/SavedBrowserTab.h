@@ -17,6 +17,8 @@ public:
 
 	bool IsSaved() const override;
 
+	std::string GetSidebarLabel() const override;
+
 private:
 	int m_dbId;
 	std::string m_baseUrl;

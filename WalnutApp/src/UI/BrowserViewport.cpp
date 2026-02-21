@@ -98,7 +98,7 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 
 		Walnut::WebViewState tabState = tab->GetWebViewState();
 		const char* tabIcon = !tab->IsOpen() ? ICON_FA_FILE : (tabState.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE);
-		std::string windowTitle = std::string(tabIcon) + " " + tab->GetTabLabel() + "###TabWindow_" + std::to_string(tab->GetId());
+		std::string windowTitle = std::string(tabIcon) + " " + tab->GetTabBarLabel() + "###TabWindow_" + std::to_string(tab->GetId());
 
 		bool contentVisible = ImGui::Begin(windowTitle.c_str(), &isOpen, ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoSavedSettings);
 

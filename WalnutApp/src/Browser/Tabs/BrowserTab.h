@@ -44,7 +44,8 @@ public:
 	std::string& GetUrlInput() override;
 	const std::string& GetUrlInput() const override;
 
-	std::string GetTabLabel() const override;
+	std::string GetTabBarLabel() const override;
+	std::string GetSidebarLabel() const override;
 
 protected:
 	CefRefPtr<Walnut::WebView> GetWebView() const;

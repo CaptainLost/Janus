@@ -3,7 +3,6 @@
 #include "../Browser/TabManager.h"
 #include "../SavedTabs/SavedTabsManager.h"
 
-#include <unordered_map>
 #include <vector>
 
 class SavedBrowserTab;
@@ -22,6 +21,5 @@ private:
 	SavedBrowserTab* FindSavedTab(int dbId, TabManager& tabManager);
 
 	std::vector<SavedTabRecord> m_savedEntries;
-	std::unordered_map<int, std::string> m_savedLastUrls;
 	char m_savedUrlBuffer[512] = {};
 };

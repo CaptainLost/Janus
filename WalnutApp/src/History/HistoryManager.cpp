@@ -2,19 +2,18 @@
 #include "../Utils/Paths.h"
 #include "../Utils/Sqlite.h"
 
-namespace {
-
-HistoryEntry ReadEntry(sqlite3_stmt* stmt)
+namespace
 {
-	return {
-		.url = Sqlite::ColumnText(stmt, 0),
-		.title = Sqlite::ColumnText(stmt, 1),
-		.visitCount = sqlite3_column_int(stmt, 2),
-		.lastVisit = sqlite3_column_int64(stmt, 3),
-	};
+	HistoryEntry ReadEntry(sqlite3_stmt* stmt)
+	{
+		return {
+			.url = Sqlite::ColumnText(stmt, 0),
+			.title = Sqlite::ColumnText(stmt, 1),
+			.visitCount = sqlite3_column_int(stmt, 2),
+			.lastVisit = sqlite3_column_int64(stmt, 3),
+		};
+	}
 }
-
-} // namespace
 
 HistoryManager::HistoryManager()
 {

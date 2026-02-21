@@ -1,6 +1,9 @@
 #include "SavedBrowserTab.h"
 
 #include "../../Utils/UrlUtils.h"
+#include "../../Utils/StringUtils.h"
+
+#include <IconsFontAwesome6.h>
 
 SavedBrowserTab::SavedBrowserTab(int id, int dbId, const std::string& baseUrl)
 	: BrowserTab(id), m_dbId(dbId), m_baseUrl(baseUrl)
@@ -54,4 +57,17 @@ void SavedBrowserTab::Detach()
 bool SavedBrowserTab::IsSaved() const
 {
 	return !m_detached;
+}
+
+std::string SavedBrowserTab::GetSidebarLabel() const
+{
+	Walnut::WebViewState state = GetWebViewState();
+
+	if (!state.Title.empty())
+	{
+		return state.Title;
+	}
+
+	std::string host = UrlUtils::GetHost(m_baseUrl);
+	return host.empty() ? m_baseUrl : host;
 }

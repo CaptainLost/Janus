@@ -63,6 +63,8 @@ void BrowserLayer::OnUpdate(float ts)
 
 void BrowserLayer::OnUIRender()
 {
+	ImGui::ShowDemoWindow();
+
 	BuildDockLayout();
 	RenderSidebar();
 	RenderMainViewport();
