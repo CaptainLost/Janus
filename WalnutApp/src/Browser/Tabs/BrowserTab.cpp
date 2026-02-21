@@ -1,6 +1,6 @@
 #include "BrowserTab.h"
 
-#include "../Utils/UrlUtils.h"
+#include "../../Utils/UrlUtils.h"
 
 BrowserTab::BrowserTab(int id)
 	: m_id(id)

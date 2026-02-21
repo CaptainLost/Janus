@@ -1,6 +1,6 @@
 #include "SavedTab.h"
 
-#include "../Utils/UrlUtils.h"
+#include "../../Utils/UrlUtils.h"
 
 SavedTab::SavedTab(int id, int dbId, const std::string& baseUrl)
 	: BrowserTab(id), m_dbId(dbId), m_baseUrl(baseUrl)
@@ -11,14 +11,18 @@ void SavedTab::Open(const std::string& url)
 {
 	BrowserTab::Open(url);
 
-	GetWebView()->SetBeforeBrowseCallback([this](const std::string& url) -> bool {
-		if (!UrlUtils::IsHttp(url))
+	GetWebView()->SetBeforeBrowseCallback([this](const std::string& navigatedUrl) -> bool {
+		if (!UrlUtils::IsHttp(navigatedUrl))
+		{
 			return false;
+		}
 
-		if (!UrlUtils::IsSameDomain(UrlUtils::GetHost(url), UrlUtils::GetHost(m_baseUrl)))
+		if (!UrlUtils::IsSameDomain(UrlUtils::GetHost(navigatedUrl), UrlUtils::GetHost(m_baseUrl)))
 		{
 			if (m_onDomainExit)
-				m_onDomainExit(url);
+			{
+				m_onDomainExit(navigatedUrl);
+			}
 
 			return true;
 		}

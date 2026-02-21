@@ -1,6 +1,6 @@
 #include "TabManager.h"
-#include "BrowserTab.h"
-#include "SavedTab.h"
+#include "Tabs/BrowserTab.h"
+#include "Tabs/SavedTab.h"
 
 #include <algorithm>
 

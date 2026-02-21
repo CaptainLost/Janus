@@ -1,6 +1,7 @@
 #include "Sidebar.h"
-#include "../Browser/SavedTab.h"
+#include "../Browser/Tabs/SavedTab.h"
 #include "../Utils/UrlUtils.h"
+#include "../Utils/StringUtils.h"
 
 #include "imgui.h"
 #include "IconsFontAwesome6.h"
@@ -27,16 +28,6 @@ static std::string BuildSavedEntryLabel(const std::string& baseUrl, const std::s
 	return host + " " + path;
 }
 
-static std::string Truncate(const std::string& text, size_t maxLength)
-{
-	if (text.size() <= maxLength)
-	{
-		return text;
-	}
-
-	return text.substr(0, maxLength - 3) + "...";
-}
-
 static std::string BuildTemporaryTabLabel(const Tab& tab)
 {
 	if (!tab.IsOpen())
@@ -47,10 +38,8 @@ static std::string BuildTemporaryTabLabel(const Tab& tab)
 	Walnut::WebViewState state = tab.GetWebViewState();
 	const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
 	std::string title = state.Title.empty() ? "Loading..." : state.Title;
-	return Truncate(std::string(icon) + " " + title, 30);
+	return StringUtils::Truncate(std::string(icon) + " " + title, 30);
 }
-
-// --- Sidebar ---
 
 void Sidebar::Load(SavedTabsManager& savedTabsManager)
 {
@@ -111,7 +100,9 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 		{
 			Walnut::WebViewState state = tab->GetWebViewState();
 			if (!state.URL.empty())
+			{
 				m_savedLastUrls[entry.dbId] = state.URL;
+			}
 		}
 
 		bool isTabOpen = (tab != nullptr);
@@ -129,7 +120,7 @@ void Sidebar::RenderSavedSection(TabManager& tabManager, SavedTabsManager& saved
 			const char* icon = state.IsLoading ? ICON_FA_SPINNER : ICON_FA_GLOBE;
 			label = std::string(icon) + " " + BuildSavedEntryLabel(entry.baseUrl, state.URL);
 		}
-		label = Truncate(label, 30);
+		label = StringUtils::Truncate(label, 30);
 
 		bool isActive = isTabOpen && (tab->GetId() == tabManager.GetActiveTabId());
 		if (isActive)

@@ -5,6 +5,7 @@
 #include "AddressBar.h"
 #include "../History/HistoryWindow.h"
 
+#include "Walnut/WebView.h"
 #include "imgui.h"
 
 #include <functional>
@@ -29,11 +30,19 @@ public:
 
 	void OpenHistoryWindow() { m_historyWindow.Open(); }
 
+	struct ActiveContextMenu
+	{
+		bool requestOpen = false;
+		Walnut::ContextMenuRequest params;
+		ImVec2 screenPosition;
+	};
+
 private:
 	void RenderTabBar(TabManager& tabManager);
 	void DrawFaviconInTab(Tab& tab);
-	void RenderTabContent(Tab& tab);
-	void RenderBrowserContent(Tab& tab);
+	void RenderTabContent(Tab& tab, TabManager& tabManager);
+	void RenderBrowserContent(Tab& tab, TabManager& tabManager);
+	void RenderContextMenu(Tab& tab, TabManager& tabManager);
 	void ForwardInputToBrowser(Tab& tab, ImVec2 imagePos);
 
 	std::string m_uniqueId;
@@ -43,4 +52,6 @@ private:
 
 	std::unordered_set<int> m_dockedTabIds;
 	std::unordered_map<int, ImGuiID> m_tabWindowIds;
+
+	ActiveContextMenu m_activeContextMenu;
 };

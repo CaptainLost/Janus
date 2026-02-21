@@ -22,6 +22,8 @@
 #include "include/cef_load_handler.h"
 #include "include/cef_display_handler.h"
 #include "include/cef_request_handler.h"
+#include "include/cef_context_menu_handler.h"
+#include "include/cef_download_handler.h"
 
 namespace Walnut {
 
@@ -36,12 +38,30 @@ namespace Walnut {
 		bool        CanGoForward = false;
 	};
 
+	struct ContextMenuRequest
+	{
+		int x = 0;
+		int y = 0;
+		std::string linkUrl;
+		std::string sourceUrl;
+		std::string selectionText;
+		std::string pageUrl;
+		bool hasLink = false;
+		bool hasImage = false;
+		bool hasSelection = false;
+		bool isEditable = false;
+		bool canGoBack = false;
+		bool canGoForward = false;
+	};
+
 	class WebView : public CefClient,
 	                public CefRenderHandler,
 	                public CefLifeSpanHandler,
 	                public CefLoadHandler,
 	                public CefDisplayHandler,
-	                public CefRequestHandler
+	                public CefRequestHandler,
+	                public CefContextMenuHandler,
+	                public CefDownloadHandler
 	{
 	public:
 		/// Construct a WebView with an initial viewport size.
@@ -78,6 +98,12 @@ namespace Walnut {
 		/// Returns true if a new frame was available (dirty flag cleared).
 		bool GetPixelBuffer(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight);
 
+		/// Returns true if a new context menu request is available, fills `out` and clears the flag.
+		bool GetContextMenuRequest(ContextMenuRequest& out);
+
+		/// Sets the path to use for the next download triggered via StartDownload.
+		void SetPendingDownloadPath(const std::string& path);
+
 		bool GetFaviconPixels(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight);
 		void SetFaviconData(std::vector<uint8_t> pixels, int width, int height);
 
@@ -92,11 +118,13 @@ namespace Walnut {
 
 	private:
 		// -- CefClient --------------------------------------------------------
-		CefRefPtr<CefRenderHandler>   GetRenderHandler()   override { return this; }
-		CefRefPtr<CefLifeSpanHandler> GetLifeSpanHandler() override { return this; }
-		CefRefPtr<CefLoadHandler>     GetLoadHandler()     override { return this; }
-		CefRefPtr<CefDisplayHandler>  GetDisplayHandler()  override { return this; }
-		CefRefPtr<CefRequestHandler>  GetRequestHandler()  override { return this; }
+		CefRefPtr<CefRenderHandler>      GetRenderHandler()      override { return this; }
+		CefRefPtr<CefLifeSpanHandler>    GetLifeSpanHandler()    override { return this; }
+		CefRefPtr<CefLoadHandler>        GetLoadHandler()        override { return this; }
+		CefRefPtr<CefDisplayHandler>     GetDisplayHandler()     override { return this; }
+		CefRefPtr<CefRequestHandler>     GetRequestHandler()     override { return this; }
+		CefRefPtr<CefContextMenuHandler> GetContextMenuHandler() override { return this; }
+		CefRefPtr<CefDownloadHandler>    GetDownloadHandler()    override { return this; }
 
 		// -- CefRenderHandler -------------------------------------------------
 		void GetViewRect(CefRefPtr<CefBrowser> browser, CefRect& rect) override;
@@ -129,6 +157,28 @@ namespace Walnut {
 		                    CefRefPtr<CefRequest> request,
 		                    bool userGesture,
 		                    bool isRedirect) override;
+
+		// -- CefContextMenuHandler --------------------------------------------
+		void OnBeforeContextMenu(CefRefPtr<CefBrowser> browser,
+		                         CefRefPtr<CefFrame> frame,
+		                         CefRefPtr<CefContextMenuParams> params,
+		                         CefRefPtr<CefMenuModel> model) override;
+
+		bool RunContextMenu(CefRefPtr<CefBrowser> browser,
+		                    CefRefPtr<CefFrame> frame,
+		                    CefRefPtr<CefContextMenuParams> params,
+		                    CefRefPtr<CefMenuModel> model,
+		                    CefRefPtr<CefRunContextMenuCallback> callback) override;
+
+		// -- CefDownloadHandler -----------------------------------------------
+		bool OnBeforeDownload(CefRefPtr<CefBrowser> browser,
+		                      CefRefPtr<CefDownloadItem> downloadItem,
+		                      const CefString& suggestedName,
+		                      CefRefPtr<CefBeforeDownloadCallback> callback) override;
+
+		void OnDownloadUpdated(CefRefPtr<CefBrowser> browser,
+		                       CefRefPtr<CefDownloadItem> downloadItem,
+		                       CefRefPtr<CefDownloadItemCallback> callback) override;
 
 	private:
 		// Viewport dimensions (atomic-ish � only written from UI thread)
@@ -163,6 +213,15 @@ namespace Walnut {
 		// Callbacks
 		std::function<void(const std::string&)> m_onAddressChange;
 		std::function<bool(const std::string&)> m_onBeforeBrowse;
+
+		// Context menu state
+		mutable std::mutex m_contextMenuMutex;
+		ContextMenuRequest m_contextMenuRequest;
+		bool m_contextMenuDirty = false;
+
+		// Pending download path (set before calling StartDownload)
+		std::mutex m_downloadMutex;
+		std::string m_pendingDownloadPath;
 
 		IMPLEMENT_REFCOUNTING(WebView);
 	};

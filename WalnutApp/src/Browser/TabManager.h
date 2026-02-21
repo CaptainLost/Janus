@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Tab.h"
+#include "Tabs/Tab.h"
 
 #include <memory>
 #include <vector>

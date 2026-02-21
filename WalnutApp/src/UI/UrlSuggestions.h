@@ -1,7 +1,7 @@
 #pragma once
 
 #include "../History/HistoryManager.h"
-#include "../Browser/Tab.h"
+#include "../Browser/Tabs/Tab.h"
 
 #include "imgui.h"
 

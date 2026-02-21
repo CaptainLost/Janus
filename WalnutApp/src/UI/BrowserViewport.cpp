@@ -1,5 +1,7 @@
 #include "BrowserViewport.h"
 #include "../Browser/CefInputBridge.h"
+#include "../Utils/UrlUtils.h"
+#include "../Utils/FileDialogs.h"
 
 #include "Walnut/Image.h"
 
@@ -177,7 +179,7 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 			m_addressBar.RenderForTab(tab.get());
 			ImGui::Separator();
 
-			RenderTabContent(*tab);
+			RenderTabContent(*tab, tabManager);
 		}
 		ImGui::End();
 
@@ -199,17 +201,17 @@ void BrowserViewport::RenderTabBar(TabManager& tabManager)
 	}
 }
 
-void BrowserViewport::RenderTabContent(Tab& tab)
+void BrowserViewport::RenderTabContent(Tab& tab, TabManager& tabManager)
 {
 	if (!tab.IsOpen())
 	{
 		return;
 	}
 
-	RenderBrowserContent(tab);
+	RenderBrowserContent(tab, tabManager);
 }
 
-void BrowserViewport::RenderBrowserContent(Tab& tab)
+void BrowserViewport::RenderBrowserContent(Tab& tab, TabManager& tabManager)
 {
 	ImVec2 region = ImGui::GetContentRegionAvail();
 	int newW = (std::max)(static_cast<int>(region.x), 64);
@@ -231,10 +233,164 @@ void BrowserViewport::RenderBrowserContent(Tab& tab)
 			       static_cast<float>(image->GetHeight())));
 
 		ForwardInputToBrowser(tab, imagePos);
+
+		auto webView = tab.GetWebView();
+		Walnut::ContextMenuRequest contextRequest;
+		if (webView && webView->GetContextMenuRequest(contextRequest))
+		{
+			m_activeContextMenu.params = contextRequest;
+			m_activeContextMenu.screenPosition = {
+				imagePos.x + static_cast<float>(contextRequest.x),
+				imagePos.y + static_cast<float>(contextRequest.y)
+			};
+			m_activeContextMenu.requestOpen = true;
+		}
+
+		if (m_activeContextMenu.requestOpen)
+		{
+			m_activeContextMenu.requestOpen = false;
+			ImGui::OpenPopup("##BrowserCtxMenu");
+		}
+
+		ImGui::SetNextWindowPos(m_activeContextMenu.screenPosition, ImGuiCond_Appearing);
+		if (ImGui::BeginPopup("##BrowserCtxMenu"))
+		{
+			RenderContextMenu(tab, tabManager);
+			ImGui::EndPopup();
+		}
 	}
 	else
 	{
 		ImGui::Text("Loading...");
+	}
+}
+
+void BrowserViewport::RenderContextMenu(Tab& tab, TabManager& tabManager)
+{
+	const Walnut::ContextMenuRequest& params = m_activeContextMenu.params;
+
+	if (params.hasLink)
+	{
+		if (ImGui::MenuItem("Open Link in New Tab"))
+		{
+			int newTabId = tabManager.AddTab();
+			tabManager.GetTab(newTabId)->Open(params.linkUrl);
+			tabManager.SetActiveTab(newTabId);
+		}
+
+		if (ImGui::MenuItem("Copy Link Address"))
+		{
+			ImGui::SetClipboardText(params.linkUrl.c_str());
+		}
+
+		ImGui::Separator();
+	}
+
+	if (params.hasImage)
+	{
+		if (ImGui::MenuItem("Open Image in New Tab"))
+		{
+			int newTabId = tabManager.AddTab();
+			tabManager.GetTab(newTabId)->Open(params.sourceUrl);
+			tabManager.SetActiveTab(newTabId);
+		}
+
+		if (ImGui::MenuItem("Copy Image Address"))
+		{
+			ImGui::SetClipboardText(params.sourceUrl.c_str());
+		}
+
+		if (ImGui::MenuItem("Save Image As..."))
+		{
+			std::string savePath = FileDialogs::ShowSaveImageDialog(params.sourceUrl);
+			if (!savePath.empty())
+			{
+				tab.GetWebView()->SetPendingDownloadPath(savePath);
+				tab.GetWebView()->GetBrowser()->GetHost()->StartDownload(params.sourceUrl);
+			}
+		}
+
+		ImGui::Separator();
+	}
+
+	if (params.isEditable)
+	{
+		if (params.hasSelection)
+		{
+			if (ImGui::MenuItem("Cut"))
+			{
+				tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Cut();
+			}
+
+			if (ImGui::MenuItem("Copy"))
+			{
+				tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Copy();
+			}
+
+			ImGui::Separator();
+		}
+
+		if (ImGui::MenuItem("Paste"))
+		{
+			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Paste();
+		}
+
+		if (ImGui::MenuItem("Select All"))
+		{
+			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->SelectAll();
+		}
+
+		ImGui::Separator();
+	}
+	else if (params.hasSelection)
+	{
+		if (ImGui::MenuItem("Copy"))
+		{
+			tab.GetWebView()->GetBrowser()->GetFocusedFrame()->Copy();
+		}
+
+		std::string searchLabel = "Search Google for \"" + params.selectionText.substr(0, 32) +
+		                          (params.selectionText.size() > 32 ? "..." : "") + "\"";
+		if (ImGui::MenuItem(searchLabel.c_str()))
+		{
+			std::string searchUrl = "https://www.google.com/search?q=" + UrlUtils::UrlEncodeQuery(params.selectionText);
+			int newTabId = tabManager.AddTab();
+			tabManager.GetTab(newTabId)->Open(searchUrl);
+			tabManager.SetActiveTab(newTabId);
+		}
+
+		ImGui::Separator();
+	}
+
+	if (params.canGoBack)
+	{
+		if (ImGui::MenuItem("Back"))
+		{
+			tab.GetWebView()->GoBack();
+		}
+	}
+
+	if (params.canGoForward)
+	{
+		if (ImGui::MenuItem("Forward"))
+		{
+			tab.GetWebView()->GoForward();
+		}
+	}
+
+	if (ImGui::MenuItem("Reload"))
+	{
+		tab.GetWebView()->Reload();
+	}
+
+	ImGui::Separator();
+
+	if (ImGui::MenuItem("View Page Source"))
+	{
+		std::string sourceUrl = "view-source:" + params.pageUrl;
+		int newTabId = tabManager.AddTab();
+		tabManager.GetTab(newTabId)->Open(sourceUrl);
+		tabManager.SetActiveTab(newTabId);
 	}
 }
 
