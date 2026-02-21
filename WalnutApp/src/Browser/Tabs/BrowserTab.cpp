@@ -223,7 +223,7 @@ bool BrowserTab::UpdateBrowserImage()
 		m_browserImage = std::make_shared<Walnut::Image>(
 			static_cast<uint32_t>(width),
 			static_cast<uint32_t>(height),
-			Walnut::ImageFormat::RGBA);
+			Walnut::ImageFormat::BGRA);
 	}
 
 	m_browserImage->SetData(buffer.data());

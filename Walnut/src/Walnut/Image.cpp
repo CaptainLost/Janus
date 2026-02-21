@@ -34,16 +34,18 @@ namespace Walnut {
 			{
 				case ImageFormat::RGBA:    return 4;
 				case ImageFormat::RGBA32F: return 16;
+				case ImageFormat::BGRA:    return 4;
 			}
 			return 0;
 		}
-		
+
 		static VkFormat WalnutFormatToVulkanFormat(ImageFormat format)
 		{
 			switch (format)
 			{
 				case ImageFormat::RGBA:    return VK_FORMAT_R8G8B8A8_UNORM;
 				case ImageFormat::RGBA32F: return VK_FORMAT_R32G32B32A32_SFLOAT;
+				case ImageFormat::BGRA:    return VK_FORMAT_B8G8R8A8_UNORM;
 			}
 			return (VkFormat)0;
 		}

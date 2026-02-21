@@ -12,6 +12,19 @@
 #include <thread>
 #endif
 
+static int GetMonitorRefreshRate()
+{
+#ifdef _WIN32
+	DEVMODE devMode = {};
+	devMode.dmSize = sizeof(devMode);
+	if (EnumDisplaySettings(nullptr, ENUM_CURRENT_SETTINGS, &devMode) && devMode.dmDisplayFrequency > 1)
+	{
+		return static_cast<int>(devMode.dmDisplayFrequency);
+	}
+#endif
+	return 60;
+}
+
 namespace Walnut
 {
 
@@ -26,7 +39,7 @@ namespace Walnut
 		windowInfo.SetAsWindowless(nullptr);
 
 		CefBrowserSettings settings;
-		settings.windowless_frame_rate = 60;
+		settings.windowless_frame_rate = GetMonitorRefreshRate();
 
 		CefBrowserHost::CreateBrowser(windowInfo, this, startURL, settings, nullptr, nullptr);
 	}
@@ -193,15 +206,7 @@ namespace Walnut
 
 		const size_t bufferSize = static_cast<size_t>(width) * height * 4;
 		m_PixelBuffer.resize(bufferSize);
-
-		const uint8_t* src = static_cast<const uint8_t*>(buffer);
-		for (size_t i = 0; i < bufferSize; i += 4)
-		{
-			m_PixelBuffer[i + 0] = src[i + 2];
-			m_PixelBuffer[i + 1] = src[i + 1];
-			m_PixelBuffer[i + 2] = src[i + 0];
-			m_PixelBuffer[i + 3] = src[i + 3];
-		}
+		memcpy(m_PixelBuffer.data(), buffer, bufferSize);
 
 		m_BufferWidth = width;
 		m_BufferHeight = height;
