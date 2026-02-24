@@ -93,6 +93,34 @@ void TabManager::RemoveTab(int id)
 	}
 }
 
+void TabManager::MoveTabBefore(int draggedId, int targetId)
+{
+	auto draggedIt = std::ranges::find_if(m_tabs,
+		[draggedId](const auto& t) { return t->GetId() == draggedId; });
+	auto targetIt = std::ranges::find_if(m_tabs,
+		[targetId](const auto& t) { return t->GetId() == targetId; });
+
+	if (draggedIt == m_tabs.end() || targetIt == m_tabs.end() || draggedIt == targetIt)
+	{
+		return;
+	}
+
+	auto tab = std::move(*draggedIt);
+	m_tabs.erase(draggedIt);
+
+	targetIt = std::ranges::find_if(m_tabs,
+		[targetId](const auto& t) { return t->GetId() == targetId; });
+
+	if (targetIt == m_tabs.end())
+	{
+		m_tabs.push_back(std::move(tab));
+	}
+	else
+	{
+		m_tabs.insert(targetIt, std::move(tab));
+	}
+}
+
 void TabManager::CloseAll()
 {
 	for (auto& tab : m_tabs)

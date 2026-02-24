@@ -15,6 +15,7 @@ public:
 	std::shared_ptr<Tab> DetachTab(int id);
 
 	void RemoveTab(int id);
+	void MoveTabBefore(int draggedId, int targetId);
 	void CloseAll();
 
 	void SetActiveTab(int id);
