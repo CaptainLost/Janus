@@ -1,10 +1,10 @@
 #include "BrowserLayer.h"
 
-#include "Browser/TabManager.h"
 #include "UI/BrowserViewport.h"
-#include "UI/Sidebar.h"
 #include "History/HistoryManager.h"
+#include "SavedTabs/SavedDatabase.h"
 #include "SavedTabs/SavedTabsManager.h"
+#include "SavedTabs/SavedFoldersManager.h"
 
 #include "include/cef_app.h"
 
@@ -12,11 +12,12 @@
 #include "imgui_internal.h"
 
 BrowserLayer::BrowserLayer()
-	: m_tabManager(std::make_unique<TabManager>())
-	, m_viewport(std::make_unique<BrowserViewport>("main"))
+	: m_viewport(std::make_unique<BrowserViewport>("main"))
 	, m_historyManager(std::make_unique<HistoryManager>())
-	, m_savedTabsManager(std::make_unique<SavedTabsManager>())
-	, m_sidebar(std::make_unique<Sidebar>())
+	, m_savedDatabase(std::make_unique<SavedDatabase>())
+	, m_savedTabsManager(std::make_unique<SavedTabsManager>(*m_savedDatabase))
+	, m_savedFoldersManager(std::make_unique<SavedFoldersManager>(*m_savedDatabase))
+	, m_sidebarPanel(m_tabManager)
 {
 }
 
@@ -25,8 +26,6 @@ BrowserLayer::~BrowserLayer() = default;
 void BrowserLayer::OnAttach()
 {
 	m_viewport->SetHistoryManager(m_historyManager.get());
-
-	m_sidebar->Load(*m_savedTabsManager);
 }
 
 void BrowserLayer::OnDetach()
@@ -66,7 +65,9 @@ void BrowserLayer::OnUIRender()
 	ImGui::ShowDemoWindow();
 
 	BuildDockLayout();
-	RenderSidebar();
+
+	m_sidebarPanel.Render();
+
 	RenderMainViewport();
 }
 
@@ -112,11 +113,6 @@ void BrowserLayer::BuildDockLayout()
 	m_layoutBuilt = true;
 }
 
-void BrowserLayer::RenderSidebar()
-{
-	m_sidebar->Render(*m_tabManager, *m_savedTabsManager);
-}
-
 void BrowserLayer::RenderMainViewport()
 {
 	ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(4, 4));
@@ -125,7 +121,7 @@ void BrowserLayer::RenderMainViewport()
 		ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoScrollbar |
 		ImGuiWindowFlags_NoScrollWithMouse);
 
-	m_viewport->Render(*m_tabManager);
+	m_viewport->Render(*m_tabManager); // FIX ME LATER
 
 	ImGui::End();
 	ImGui::PopStyleVar();

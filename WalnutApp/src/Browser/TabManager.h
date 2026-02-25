@@ -8,6 +8,8 @@
 class TabManager
 {
 public:
+	static constexpr int InvalidTabId = -1;
+
 	int AddTab();
 	int AddSavedTab(int dbId, const std::string& baseUrl);
 
@@ -21,9 +23,11 @@ public:
 	void SetActiveTab(int id);
 
 	Tab* GetTab(int id);
+	const Tab* GetTab(int id) const;
 
 	int GetActiveTabId() const;
 	Tab* GetActiveTab();
+	const Tab* GetActiveTab() const;
 
 	const std::vector<std::shared_ptr<Tab>>& Tabs() const;
 	bool HasAnyTab() const;
@@ -31,9 +35,15 @@ public:
 	static int GenerateTabId();
 
 private:
+	using TabIterator = std::vector<std::shared_ptr<Tab>>::iterator;
+	using ConstTabIterator = std::vector<std::shared_ptr<Tab>>::const_iterator;
+
+	int InsertTab(std::shared_ptr<Tab> tab);
+	TabIterator FindIterator(int id);
+	ConstTabIterator FindIterator(int id) const;
 	void PickNextActiveTab();
 
-	int m_activeTabId = -1;
+	int m_activeTabId = InvalidTabId;
 	std::vector<std::shared_ptr<Tab>> m_tabs;
 
 	static int s_nextGlobalId;

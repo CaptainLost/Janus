@@ -1,16 +1,18 @@
 #pragma once
 
 #include "Walnut/Layer.h"
+#include "Browser/TabManager.h"
+#include "UI/SidebarPanel.h"
 
 #include <memory>
 #include <string>
 #include <unordered_map>
 
-class TabManager;
 class BrowserViewport;
 class HistoryManager;
+class SavedDatabase;
 class SavedTabsManager;
-class Sidebar;
+class SavedFoldersManager;
 
 class BrowserLayer : public Walnut::Layer
 {
@@ -27,14 +29,16 @@ public:
 
 private:
 	void BuildDockLayout();
-	void RenderSidebar();
 	void RenderMainViewport();
 
-	std::unique_ptr<TabManager> m_tabManager;
+	std::shared_ptr<TabManager> m_tabManager = std::make_shared<TabManager>();
+
 	std::unique_ptr<BrowserViewport> m_viewport;
 	std::unique_ptr<HistoryManager> m_historyManager;
+	std::unique_ptr<SavedDatabase> m_savedDatabase;
 	std::unique_ptr<SavedTabsManager> m_savedTabsManager;
-	std::unique_ptr<Sidebar> m_sidebar;
+	std::unique_ptr<SavedFoldersManager> m_savedFoldersManager;
+	SidebarPanel m_sidebarPanel;
 
 	std::unordered_map<int, std::string> m_lastRecordedUrls;
 	bool m_layoutBuilt = false;

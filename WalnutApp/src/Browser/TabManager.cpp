@@ -4,46 +4,42 @@
 
 #include <algorithm>
 
-int TabManager::s_nextGlobalId = -1;
+int TabManager::s_nextGlobalId = InvalidTabId;
 
 int TabManager::GenerateTabId()
 {
 	return ++s_nextGlobalId;
 }
 
-int TabManager::AddTab()
+int TabManager::InsertTab(std::shared_ptr<Tab> tab)
 {
-	int id = GenerateTabId();
+	int id = tab->GetId();
 
 	if (m_tabs.empty())
 	{
 		SetActiveTab(id);
 	}
 
-	m_tabs.emplace_back(std::make_shared<BrowserTab>(id));
+	m_tabs.push_back(std::move(tab));
 
 	return id;
 }
 
+int TabManager::AddTab()
+{
+	return InsertTab(std::make_shared<BrowserTab>(GenerateTabId()));
+}
+
 int TabManager::AddSavedTab(int dbId, const std::string& baseUrl)
 {
-	int id = GenerateTabId();
-
-	if (m_tabs.empty())
-	{
-		SetActiveTab(id);
-	}
-
-	m_tabs.emplace_back(std::make_shared<SavedBrowserTab>(id, dbId, baseUrl));
-
-	return id;
+	return InsertTab(std::make_shared<SavedBrowserTab>(GenerateTabId(), dbId, baseUrl));
 }
 
 int TabManager::AcceptTab(std::shared_ptr<Tab> tab)
 {
 	if (!tab)
 	{
-		return -1;
+		return InvalidTabId;
 	}
 
 	int id = tab->GetId();
@@ -55,9 +51,7 @@ int TabManager::AcceptTab(std::shared_ptr<Tab> tab)
 
 std::shared_ptr<Tab> TabManager::DetachTab(int id)
 {
-	auto it = std::ranges::find_if(m_tabs,
-		[id](const auto& t) { return t->GetId() == id; });
-
+	auto it = FindIterator(id);
 	if (it == m_tabs.end())
 	{
 		return nullptr;
@@ -76,9 +70,7 @@ std::shared_ptr<Tab> TabManager::DetachTab(int id)
 
 void TabManager::RemoveTab(int id)
 {
-	auto it = std::ranges::find_if(m_tabs,
-		[id](const auto& t) { return t->GetId() == id; });
-
+	auto it = FindIterator(id);
 	if (it == m_tabs.end())
 	{
 		return;
@@ -95,10 +87,8 @@ void TabManager::RemoveTab(int id)
 
 void TabManager::MoveTabBefore(int draggedId, int targetId)
 {
-	auto draggedIt = std::ranges::find_if(m_tabs,
-		[draggedId](const auto& t) { return t->GetId() == draggedId; });
-	auto targetIt = std::ranges::find_if(m_tabs,
-		[targetId](const auto& t) { return t->GetId() == targetId; });
+	auto draggedIt = FindIterator(draggedId);
+	auto targetIt = FindIterator(targetId);
 
 	if (draggedIt == m_tabs.end() || targetIt == m_tabs.end() || draggedIt == targetIt)
 	{
@@ -108,8 +98,7 @@ void TabManager::MoveTabBefore(int draggedId, int targetId)
 	auto tab = std::move(*draggedIt);
 	m_tabs.erase(draggedIt);
 
-	targetIt = std::ranges::find_if(m_tabs,
-		[targetId](const auto& t) { return t->GetId() == targetId; });
+	targetIt = FindIterator(targetId);
 
 	if (targetIt == m_tabs.end())
 	{
@@ -129,7 +118,7 @@ void TabManager::CloseAll()
 	}
 
 	m_tabs.clear();
-	SetActiveTab(-1);
+	SetActiveTab(InvalidTabId);
 }
 
 void TabManager::SetActiveTab(int id)
@@ -139,9 +128,18 @@ void TabManager::SetActiveTab(int id)
 
 Tab* TabManager::GetTab(int id)
 {
-	auto it = std::ranges::find_if(m_tabs,
-		[id](const auto& t) { return t->GetId() == id; });
+	auto it = FindIterator(id);
+	if (it == m_tabs.end())
+	{
+		return nullptr;
+	}
 
+	return it->get();
+}
+
+const Tab* TabManager::GetTab(int id) const
+{
+	auto it = FindIterator(id);
 	if (it == m_tabs.end())
 	{
 		return nullptr;
@@ -160,6 +158,11 @@ Tab* TabManager::GetActiveTab()
 	return GetTab(m_activeTabId);
 }
 
+const Tab* TabManager::GetActiveTab() const
+{
+	return GetTab(m_activeTabId);
+}
+
 const std::vector<std::shared_ptr<Tab>>& TabManager::Tabs() const
 {
 	return m_tabs;
@@ -170,11 +173,23 @@ bool TabManager::HasAnyTab() const
 	return !m_tabs.empty();
 }
 
+TabManager::TabIterator TabManager::FindIterator(int id)
+{
+	return std::ranges::find_if(m_tabs,
+		[id](const auto& t) { return t->GetId() == id; });
+}
+
+TabManager::ConstTabIterator TabManager::FindIterator(int id) const
+{
+	return std::ranges::find_if(m_tabs,
+		[id](const auto& t) { return t->GetId() == id; });
+}
+
 void TabManager::PickNextActiveTab()
 {
 	if (!HasAnyTab())
 	{
-		SetActiveTab(-1);
+		SetActiveTab(InvalidTabId);
 
 		return;
 	}
@@ -188,5 +203,5 @@ void TabManager::PickNextActiveTab()
 		return;
 	}
 
-	SetActiveTab(-1);
+	SetActiveTab(InvalidTabId);
 }
