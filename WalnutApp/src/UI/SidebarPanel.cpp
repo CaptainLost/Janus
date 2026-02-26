@@ -1,10 +1,9 @@
 #include "SidebarPanel.h"
-#include "../Browser/Tabs/SavedBrowserTab.h"
-#include "../Utils/UrlUtils.h"
 
 #include "imgui.h"
 #include "IconsFontAwesome6.h"
 
+constexpr const char* TabDragPayloadType = "TAB_DRAG_DROP_PAYLOAD";
 
 SidebarPanel::SidebarPanel(const std::shared_ptr<TabManager>& tabManager)
 	: m_tabManager(tabManager)
@@ -21,12 +20,18 @@ void SidebarPanel::Render()
 		return;
 	}
 
-	ImGui::SeparatorText("Persistent");
-
+	RenderTabSeparator(ICON_FA_BOOKMARK " Persistent",
+		[this](const std::shared_ptr<Tab>& tab)
+		{
+			OnSavedTabMoveToSection(tab);
+		});
 	RenderPersistentTabSection();
 
-	ImGui::SeparatorText("Temporary");
-
+	RenderTabSeparator(ICON_FA_CLOCK " Temporary",
+		[this](const std::shared_ptr<Tab>& tab)
+		{
+			OnTemporaryTabMoveToSection(tab);
+		});
 	RenderTemporaryTabSection();
 
 	ImGui::Separator();
@@ -37,6 +42,25 @@ void SidebarPanel::Render()
 	}
 
 	ImGui::End();
+}
+
+void SidebarPanel::RenderTabSeparator(const std::string& label, tabCallbackFn& onTabDropCallback)
+{
+	ImGui::SeparatorText(label.c_str());
+
+	if (onTabDropCallback && ImGui::BeginDragDropTarget())
+	{
+		ImGuiDragDropFlags drop_target_flags = ImGuiDragDropFlags_AcceptBeforeDelivery | ImGuiDragDropFlags_AcceptNoPreviewTooltip;
+
+		if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(TabDragPayloadType))
+		{
+			std::shared_ptr<Tab> droppedTab = *(std::shared_ptr<Tab>*)payload->Data;
+
+			onTabDropCallback(droppedTab);
+		}
+
+		ImGui::EndDragDropTarget();
+	}
 }
 
 void SidebarPanel::RenderPersistentTabSection()
@@ -110,8 +134,9 @@ void SidebarPanel::RenderCompleteTab(const std::shared_ptr<Tab>& tab, tabCallbac
 
 	if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None))
 	{
-		ImGui::SetDragDropPayload("TAB_DRAG_DROP_PAYLOAD", &tab, sizeof(std::shared_ptr<Tab>));
+		ImGui::SetDragDropPayload(TabDragPayloadType, &tab, sizeof(std::shared_ptr<Tab>));
 		ImGui::Text(tab->GetSidebarLabel().c_str());
+
 		ImGui::EndDragDropSource();
 	}
 
@@ -199,6 +224,11 @@ void SidebarPanel::OnTemporaryTabClose(const std::shared_ptr<Tab>& tab)
 	m_tabManager->RemoveTab(tab->GetId());
 }
 
+void SidebarPanel::OnTemporaryTabMoveToSection(const std::shared_ptr<Tab>& tab)
+{
+
+}
+
 void SidebarPanel::OnSavedTabClicked(const std::shared_ptr<Tab>& tab)
 {
 	m_tabManager->SetActiveTab(tab->GetId());
@@ -207,4 +237,9 @@ void SidebarPanel::OnSavedTabClicked(const std::shared_ptr<Tab>& tab)
 void SidebarPanel::OnSavedTabClose(const std::shared_ptr<Tab>& tab)
 {
 	m_tabManager->RemoveTab(tab->GetId());
+}
+
+void SidebarPanel::OnSavedTabMoveToSection(const std::shared_ptr<Tab>& tab)
+{
+
 }
