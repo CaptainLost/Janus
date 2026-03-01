@@ -3,6 +3,7 @@
 #include "Walnut/Layer.h"
 #include "Browser/TabManager.h"
 #include "UI/SidebarPanel.h"
+#include "UI/ViewportPanel.h"
 
 #include <memory>
 #include <string>
@@ -39,6 +40,7 @@ private:
 	std::unique_ptr<SavedTabsManager> m_savedTabsManager;
 	std::unique_ptr<SavedFoldersManager> m_savedFoldersManager;
 	SidebarPanel m_sidebarPanel;
+	ViewportPanel m_viewportPanel;
 
 	std::unordered_map<int, std::string> m_lastRecordedUrls;
 	bool m_layoutBuilt = false;

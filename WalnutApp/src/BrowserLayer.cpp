@@ -18,6 +18,7 @@ BrowserLayer::BrowserLayer()
 	, m_savedTabsManager(std::make_unique<SavedTabsManager>(*m_savedDatabase))
 	, m_savedFoldersManager(std::make_unique<SavedFoldersManager>(*m_savedDatabase))
 	, m_sidebarPanel(m_tabManager)
+	, m_viewportPanel(m_tabManager)
 {
 }
 
@@ -66,9 +67,11 @@ void BrowserLayer::OnUIRender()
 
 	BuildDockLayout();
 
+	// m_viewportPanel.Render();
 	m_sidebarPanel.Render();
 
-	RenderMainViewport();
+	m_viewportPanel.Render();
+	// RenderMainViewport();
 }
 
 void BrowserLayer::OpenHistoryWindow()
@@ -102,9 +105,7 @@ void BrowserLayer::BuildDockLayout()
 	{
 		if (ImGuiDockNode* dockNode = ImGui::DockBuilderGetNode(id))
 		{
-			dockNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar
-			               |  ImGuiDockNodeFlags_NoDocking
-			               |  ImGuiDockNodeFlags_NoResize;
+			dockNode->LocalFlags |= ImGuiDockNodeFlags_NoTabBar | ImGuiDockNodeFlags_NoDocking;
 		}
 	};
 

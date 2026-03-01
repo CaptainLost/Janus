@@ -17,10 +17,12 @@ private:
 	void RenderPersistentTabSection();
 	void RenderTemporaryTabSection();
 
-	void RenderCompleteTab(const std::shared_ptr<Tab>& tab, tabCallbackFn& onTabClickedCallback, tabCallbackFn& onCloseCallback);
+	void RenderTabComplete(const std::shared_ptr<Tab>& tab, tabCallbackFn& onTabClickedCallback, tabCallbackFn& onCloseCallback, tabCallbackFn& onDuplicateCallback);
 	void RenderTab(const std::shared_ptr<Tab>& tab, bool isActive, tabCallbackFn& onTabClickedCallback);
 	void RenderTabCloseButton(const std::shared_ptr<Tab>& tab, bool isHovered, bool isClicked, tabCallbackFn& onCloseCallback);
-	void RenderSavedTabContextPopup(const std::shared_ptr<Tab>& tab, tabCallbackFn& onCloseCallback);
+	void RenderTabContextPopup(const std::shared_ptr<Tab>& tab, tabCallbackFn& onCloseCallback, tabCallbackFn& onDuplicateCallback);
+
+	void OnTabDuplicate(const std::shared_ptr<Tab>& tab);
 
 	void OnTemporaryTabClicked(const std::shared_ptr<Tab>& tab);
 	void OnTemporaryTabClose(const std::shared_ptr<Tab>& tab);

@@ -76,7 +76,7 @@ void SidebarPanel::RenderPersistentTabSection()
 
 		for (const std::shared_ptr<Tab>& tab : m_tabManager->Tabs())
 		{
-			RenderCompleteTab(tab,
+			RenderTabComplete(tab,
 				[this](const std::shared_ptr<Tab>& tab)
 				{
 					OnSavedTabClicked(tab);
@@ -84,6 +84,10 @@ void SidebarPanel::RenderPersistentTabSection()
 				[&tabToClose](const std::shared_ptr<Tab>& tab)
 				{
 					tabToClose = tab;
+				},
+				[this](const std::shared_ptr<Tab>& tab)
+				{
+					OnTabDuplicate(tab);
 				});
 		}
 
@@ -104,7 +108,7 @@ void SidebarPanel::RenderTemporaryTabSection()
 
 	for (const std::shared_ptr<Tab>& tab : m_tabManager->Tabs())
 	{
-		RenderCompleteTab(tab,
+		RenderTabComplete(tab,
 			[this](const std::shared_ptr<Tab>& tab)
 			{
 				OnTemporaryTabClicked(tab);
@@ -112,6 +116,10 @@ void SidebarPanel::RenderTemporaryTabSection()
 			[&tabToClose](const std::shared_ptr<Tab>& tab)
 			{
 				tabToClose = tab;
+			},
+			[this](const std::shared_ptr<Tab>& tab)
+			{
+				OnTabDuplicate(tab);
 			});
 	}
 
@@ -121,7 +129,7 @@ void SidebarPanel::RenderTemporaryTabSection()
 	}
 }
 
-void SidebarPanel::RenderCompleteTab(const std::shared_ptr<Tab>& tab, tabCallbackFn& onTabClickedCallback, tabCallbackFn& onCloseCallback)
+void SidebarPanel::RenderTabComplete(const std::shared_ptr<Tab>& tab, tabCallbackFn& onTabClickedCallback, tabCallbackFn& onCloseCallback, tabCallbackFn& onDuplicateCallback)
 {
 	const bool isActive = (tab->GetId() == m_tabManager->GetActiveTabId());
 
@@ -147,7 +155,7 @@ void SidebarPanel::RenderCompleteTab(const std::shared_ptr<Tab>& tab, tabCallbac
 		RenderTabCloseButton(tab, ImGui::IsItemHovered(), ImGui::IsItemActive(), onCloseCallback);
 	}
 
-	RenderSavedTabContextPopup(tab, onCloseCallback);
+	RenderTabContextPopup(tab, onCloseCallback, onDuplicateCallback);
 }
 
 void SidebarPanel::RenderTab(const std::shared_ptr<Tab>& tab, bool isActive, tabCallbackFn& onTabClickedCallback)
@@ -188,30 +196,38 @@ void SidebarPanel::RenderTabCloseButton(const std::shared_ptr<Tab>& tab, bool is
 	}
 }
 
-void SidebarPanel::RenderSavedTabContextPopup(const std::shared_ptr<Tab>& tab, tabCallbackFn& onCloseCallback)
+void SidebarPanel::RenderTabContextPopup(const std::shared_ptr<Tab>& tab, tabCallbackFn& onCloseCallback, tabCallbackFn& onDuplicateCallback)
 {
 	ImGui::PushID(tab.get());
 
-	if (ImGui::BeginPopupContextItem("SavedTabContextPopup"))
+	if (ImGui::BeginPopupContextItem("TabContextPopup"))
 	{
-		if (onCloseCallback && ImGui::Selectable("Close##SavedTabContextPopup"))
+		if (onCloseCallback && ImGui::Selectable("Close##TabContextPopup"))
 		{
 			ImGui::CloseCurrentPopup();
 
 			onCloseCallback(tab);
 		}
 
-		ImGui::Separator();
-
-		if (ImGui::Selectable("Duplicate##SavedTabContextPopup"))
+		if (onDuplicateCallback)
 		{
+			ImGui::Separator();
 
+			if (ImGui::Selectable("Duplicate##TabContextPopup"))
+			{
+				onDuplicateCallback(tab);
+			}
 		}
 
 		ImGui::EndPopup();
 	}
 
 	ImGui::PopID();
+}
+
+void SidebarPanel::OnTabDuplicate(const std::shared_ptr<Tab>& tab)
+{
+
 }
 
 void SidebarPanel::OnTemporaryTabClicked(const std::shared_ptr<Tab>& tab)
