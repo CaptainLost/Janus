@@ -355,17 +355,12 @@ static void FrameRender(ImGui_ImplVulkanH_Window* wd, ImDrawData* draw_data)
 		vkWaitForFences(g_Device, 1, &s_SemaphoreFences[wd->SemaphoreIndex], VK_TRUE, UINT64_MAX);
 
 	err = vkAcquireNextImageKHR(g_Device, wd->Swapchain, UINT64_MAX, image_acquired_semaphore, VK_NULL_HANDLE, &wd->FrameIndex);
+	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
+		g_SwapChainRebuild = true;
 	if (err == VK_ERROR_OUT_OF_DATE_KHR)
-	{
-		g_SwapChainRebuild = true;
 		return;
-	}
-	if (err == VK_SUBOPTIMAL_KHR)
-	{
-		g_SwapChainRebuild = true;
-		return;
-	}
-	check_vk_result(err);
+	if (err != VK_SUBOPTIMAL_KHR)
+		check_vk_result(err);
 
 	s_CurrentFrameIndex = (s_CurrentFrameIndex + 1) % g_MainWindowData.ImageCount;
 
@@ -453,12 +448,12 @@ static void FramePresent(ImGui_ImplVulkanH_Window* wd)
 	info.pImageIndices = &wd->FrameIndex;
 	VkResult err = vkQueuePresentKHR(g_Queue, &info);
 	if (err == VK_ERROR_OUT_OF_DATE_KHR || err == VK_SUBOPTIMAL_KHR)
-	{
 		g_SwapChainRebuild = true;
+	if (err == VK_ERROR_OUT_OF_DATE_KHR)
 		return;
-	}
-	check_vk_result(err);
-	wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->ImageCount; // Now we can use the next set of semaphores
+	if (err != VK_SUBOPTIMAL_KHR)
+		check_vk_result(err);
+	wd->SemaphoreIndex = (wd->SemaphoreIndex + 1) % wd->SemaphoreCount; // Now we can use the next set of semaphores
 }
 
 static void glfw_error_callback(int error, const char* description)
@@ -655,136 +650,144 @@ namespace Walnut {
 		g_ApplicationRunning = false;
 	}
 
+	void Application::RenderFrame()
+	{
+		m_IsRendering = true;
+		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
+		ImGuiIO& io = ImGui::GetIO();
+		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+
+		if (g_SwapChainRebuild)
+		{
+			int width, height;
+			glfwGetFramebufferSize(m_WindowHandle, &width, &height);
+			if (width > 0 && height > 0)
+			{
+				ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
+				ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, width, height, g_MinImageCount, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+				g_MainWindowData.FrameIndex = 0;
+
+				s_AllocatedCommandBuffers.clear();
+				s_AllocatedCommandBuffers.resize(g_MainWindowData.ImageCount);
+				memset(s_SemaphoreFences, 0, sizeof(s_SemaphoreFences));
+
+				g_SwapChainRebuild = false;
+			}
+		}
+
+		ImGui_ImplVulkan_NewFrame();
+		ImGui_ImplGlfw_NewFrame();
+		ImGui::NewFrame();
+
+		{
+			if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+			{
+				m_CustomTitlebar->Render();
+			}
+
+			static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
+
+			ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
+
+			if (m_MenubarCallback && !m_Specification.CustomTitlebar)
+			{
+				window_flags |= ImGuiWindowFlags_MenuBar;
+			}
+
+			const ImGuiViewport* viewport = ImGui::GetMainViewport();
+
+			if (m_Specification.CustomTitlebar && m_CustomTitlebar)
+			{
+				ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + m_CustomTitlebar->GetHeight()));
+				ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - m_CustomTitlebar->GetHeight()));
+			}
+			else
+			{
+				ImGui::SetNextWindowPos(viewport->WorkPos);
+				ImGui::SetNextWindowSize(viewport->WorkSize);
+			}
+
+			ImGui::SetNextWindowViewport(viewport->ID);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
+			window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
+			window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
+
+			if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
+			{
+				window_flags |= ImGuiWindowFlags_NoBackground;
+			}
+
+			ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
+			ImGui::Begin("DockSpace Demo", nullptr, window_flags);
+			ImGui::PopStyleVar();
+			ImGui::PopStyleVar(2);
+
+			if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
+			{
+				ImGuiID dockspace_id = ImGui::GetID("VulkanAppDockspace");
+				ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
+			}
+
+			if (m_MenubarCallback && !m_Specification.CustomTitlebar)
+			{
+				if (ImGui::BeginMenuBar())
+				{
+					m_MenubarCallback();
+					ImGui::EndMenuBar();
+				}
+			}
+
+			for (auto& layer : m_LayerStack)
+			{
+				layer->OnUIRender();
+			}
+
+			ImGui::End();
+		}
+
+		ImGui::Render();
+		ImDrawData* main_draw_data = ImGui::GetDrawData();
+		const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
+		wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
+		wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
+		wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
+		wd->ClearValue.color.float32[3] = clear_color.w;
+
+		if (!main_is_minimized)
+		{
+			FrameRender(wd, main_draw_data);
+		}
+
+		if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
+		{
+			ImGui::UpdatePlatformWindows();
+			ImGui::RenderPlatformWindowsDefault();
+		}
+
+		if (!main_is_minimized)
+		{
+			FramePresent(wd);
+		}
+
+		m_IsRendering = false;
+	}
+
 	void Application::Run()
 	{
 		m_Running = true;
 
-		ImGui_ImplVulkanH_Window* wd = &g_MainWindowData;
-		ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
-		ImGuiIO& io = ImGui::GetIO();
-
 		// Main loop
 		while (!glfwWindowShouldClose(m_WindowHandle) && m_Running)
 		{
-			// Poll and handle events (inputs, window resize, etc.)
 			glfwPollEvents();
 
 			for (auto& layer : m_LayerStack)
+			{
 				layer->OnUpdate(m_TimeStep);
-
-			// Resize swap chain?
-			if (g_SwapChainRebuild)
-			{
-				int width, height;
-				glfwGetFramebufferSize(m_WindowHandle, &width, &height);
-				if (width > 0 && height > 0)
-				{
-					ImGui_ImplVulkan_SetMinImageCount(g_MinImageCount);
-					ImGui_ImplVulkanH_CreateOrResizeWindow(g_Instance, g_PhysicalDevice, g_Device, &g_MainWindowData, g_QueueFamily, g_Allocator, width, height, g_MinImageCount, VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
-					g_MainWindowData.FrameIndex = 0;
-
-					// Clear allocated command buffers from here since entire pool is destroyed
-					s_AllocatedCommandBuffers.clear();
-					s_AllocatedCommandBuffers.resize(g_MainWindowData.ImageCount);
-					memset(s_SemaphoreFences, 0, sizeof(s_SemaphoreFences));
-
-					g_SwapChainRebuild = false;
-				}
 			}
 
-			// Start the Dear ImGui frame
-			ImGui_ImplVulkan_NewFrame();
-			ImGui_ImplGlfw_NewFrame();
-			ImGui::NewFrame();
-
-			{
-				// Render custom titlebar if enabled
-				if (m_Specification.CustomTitlebar && m_CustomTitlebar)
-				{
-					m_CustomTitlebar->Render();
-				}
-
-				static ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_None;
-
-				ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDocking;
-
-				// Only add the old menu bar when NOT using a custom titlebar
-				if (m_MenubarCallback && !m_Specification.CustomTitlebar)
-					window_flags |= ImGuiWindowFlags_MenuBar;
-
-				const ImGuiViewport* viewport = ImGui::GetMainViewport();
-
-				if (m_Specification.CustomTitlebar && m_CustomTitlebar)
-				{
-					// Dockspace occupies everything below the custom titlebar
-					ImGui::SetNextWindowPos(ImVec2(viewport->Pos.x, viewport->Pos.y + m_CustomTitlebar->GetHeight()));
-					ImGui::SetNextWindowSize(ImVec2(viewport->Size.x, viewport->Size.y - m_CustomTitlebar->GetHeight()));
-				}
-				else
-				{
-					ImGui::SetNextWindowPos(viewport->WorkPos);
-					ImGui::SetNextWindowSize(viewport->WorkSize);
-				}
-				ImGui::SetNextWindowViewport(viewport->ID);
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowBorderSize, 0.0f);
-				window_flags |= ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove;
-				window_flags |= ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoNavFocus;
-
-				if (dockspace_flags & ImGuiDockNodeFlags_PassthruCentralNode)
-					window_flags |= ImGuiWindowFlags_NoBackground;
-
-				ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(0.0f, 0.0f));
-				ImGui::Begin("DockSpace Demo", nullptr, window_flags);
-				ImGui::PopStyleVar();
-
-				ImGui::PopStyleVar(2);
-
-				// Submit the DockSpace
-				ImGuiIO& io = ImGui::GetIO();
-				if (io.ConfigFlags & ImGuiConfigFlags_DockingEnable)
-				{
-					ImGuiID dockspace_id = ImGui::GetID("VulkanAppDockspace");
-					ImGui::DockSpace(dockspace_id, ImVec2(0.0f, 0.0f), dockspace_flags);
-				}
-
-				// Fallback menu bar (only when custom titlebar is OFF)
-				if (m_MenubarCallback && !m_Specification.CustomTitlebar)
-				{
-					if (ImGui::BeginMenuBar())
-					{
-						m_MenubarCallback();
-						ImGui::EndMenuBar();
-					}
-				}
-
-				for (auto& layer : m_LayerStack)
-					layer->OnUIRender();
-
-				ImGui::End();
-			}
-
-			// Rendering
-			ImGui::Render();
-			ImDrawData* main_draw_data = ImGui::GetDrawData();
-			const bool main_is_minimized = (main_draw_data->DisplaySize.x <= 0.0f || main_draw_data->DisplaySize.y <= 0.0f);
-			wd->ClearValue.color.float32[0] = clear_color.x * clear_color.w;
-			wd->ClearValue.color.float32[1] = clear_color.y * clear_color.w;
-			wd->ClearValue.color.float32[2] = clear_color.z * clear_color.w;
-			wd->ClearValue.color.float32[3] = clear_color.w;
-			if (!main_is_minimized)
-				FrameRender(wd, main_draw_data);
-
-			// Update and Render additional Platform Windows
-			if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable)
-			{
-				ImGui::UpdatePlatformWindows();
-				ImGui::RenderPlatformWindowsDefault();
-			}
-
-			// Present Main Platform Window
-			if (!main_is_minimized)
-				FramePresent(wd);
+			RenderFrame();
 
 			float time = GetTime();
 			m_FrameTime = time - m_LastFrameTime;
@@ -900,6 +903,15 @@ namespace Walnut {
 		Application* app = reinterpret_cast<Application*>(GetWindowLongPtr(hwnd, GWLP_USERDATA));
 		if (!app)
 			return DefWindowProc(hwnd, msg, wParam, lParam);
+
+		if (msg == WM_SIZE && wParam != SIZE_MINIMIZED)
+		{
+			g_SwapChainRebuild = true;
+			LRESULT result = CallWindowProc(app->m_OriginalWndProc, hwnd, msg, wParam, lParam);
+			if (!app->m_IsRendering)
+				app->RenderFrame();
+			return result;
+		}
 
 		if (msg == WM_NCCALCSIZE && wParam)
 		{

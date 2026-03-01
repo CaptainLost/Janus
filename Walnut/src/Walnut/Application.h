@@ -74,6 +74,7 @@ namespace Walnut {
 	private:
 		void Init();
 		void Shutdown();
+		void RenderFrame();
 
 #ifdef WL_PLATFORM_WINDOWS
 		static LRESULT CALLBACK WndProcHook(HWND hwnd, UINT msg, WPARAM wParam, LPARAM lParam);
@@ -84,6 +85,7 @@ namespace Walnut {
 		ApplicationSpecification m_Specification;
 		GLFWwindow* m_WindowHandle = nullptr;
 		bool m_Running = false;
+		bool m_IsRendering = false;
 
 		float m_TimeStep = 0.0f;
 		float m_FrameTime = 0.0f;
