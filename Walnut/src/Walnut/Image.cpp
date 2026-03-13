@@ -166,10 +166,12 @@ namespace Walnut {
 	void Image::Release()
 	{
 		Application::SubmitResourceFree([sampler = m_Sampler, imageView = m_ImageView, image = m_Image,
-			memory = m_Memory, stagingBuffer = m_StagingBuffer, stagingBufferMemory = m_StagingBufferMemory]()
+			memory = m_Memory, stagingBuffer = m_StagingBuffer, stagingBufferMemory = m_StagingBufferMemory,
+			descriptorSet = m_DescriptorSet]()
 		{
 			VkDevice device = Application::GetDevice();
 
+			ImGui_ImplVulkan_RemoveTexture(descriptorSet);
 			vkDestroySampler(device, sampler, nullptr);
 			vkDestroyImageView(device, imageView, nullptr);
 			vkDestroyImage(device, image, nullptr);
@@ -184,6 +186,7 @@ namespace Walnut {
 		m_Memory = nullptr;
 		m_StagingBuffer = nullptr;
 		m_StagingBufferMemory = nullptr;
+		m_DescriptorSet = nullptr;
 	}
 
 	void Image::SetData(const void* data)

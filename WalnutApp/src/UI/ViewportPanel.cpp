@@ -58,27 +58,21 @@ void ViewportPanel::RenderTabComplete(const std::shared_ptr<Tab>& tab)
 
 void ViewportPanel::RenderTabContent(const std::shared_ptr<Tab>& tab)
 {
-	// ImGui::Text("Hello from window %d!", tab->GetId());
-
 	m_adressBarPanel.Render(tab);
-	// Test
-	//std::string& url = tab->GetUrlInput();
-	//url.reserve(2048);
 
-	//bool enterPressed = ImGui::InputTextWithHint(
-	//	"##nav_url",
-	//	"Enter web adress...",
-	//	url.data(),
-	//	url.capacity() + 1,
-	//	ImGuiInputTextFlags_EnterReturnsTrue,
-	//	nullptr,
-	//	&url);
+	ImVec2 availableSize = ImGui::GetContentRegionAvail();
+	int viewWidth = static_cast<int>(availableSize.x);
+	int viewHeight = static_cast<int>(availableSize.y);
 
-	//if (enterPressed)
-	//{
-	//	tab->Open(url);
-	//}
-	// Test end
+	if (viewWidth > 0 && viewHeight > 0)
+	{
+		tab->SetViewSize(viewWidth, viewHeight);
+	}
+
+	if (availableSize.x <= 0.0f || availableSize.y <= 0.0f)
+	{
+		return;
+	}
 
 	std::shared_ptr<Walnut::Image> browserImage = tab->GetBrowserImage();
 
@@ -87,7 +81,14 @@ void ViewportPanel::RenderTabContent(const std::shared_ptr<Tab>& tab)
 		return;
 	}
 
-	ImGui::Image(browserImage->GetDescriptorSet(),
-		ImVec2(static_cast<float>(browserImage->GetWidth()),
-			static_cast<float>(browserImage->GetHeight())));
+	float imageWidth = static_cast<float>(browserImage->GetWidth());
+	float imageHeight = static_cast<float>(browserImage->GetHeight());
+
+	float displayWidth = availableSize.x < imageWidth ? availableSize.x : imageWidth;
+	float displayHeight = availableSize.y < imageHeight ? availableSize.y : imageHeight;
+
+	float uMax = displayWidth / imageWidth;
+	float vMax = displayHeight / imageHeight;
+
+	ImGui::Image(browserImage->GetDescriptorSet(), ImVec2(displayWidth, displayHeight), ImVec2(0.0f, 0.0f), ImVec2(uMax, vMax));
 }

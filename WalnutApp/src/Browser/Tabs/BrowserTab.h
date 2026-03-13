@@ -61,4 +61,5 @@ private:
 	CefRefPtr<Walnut::WebView> m_webView;
 	std::shared_ptr<Walnut::Image> m_browserImage;
 	std::shared_ptr<Walnut::Image> m_faviconImage;
+	std::vector<uint8_t> m_uploadBuffer;
 };

@@ -132,7 +132,7 @@ namespace Walnut
 		return { m_CurrentURL, m_Title, m_IsLoading, m_CanGoBack, m_CanGoForward };
 	}
 
-	bool WebView::GetPixelBuffer(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight)
+	bool WebView::SwapPixelBuffer(std::vector<uint8_t>& buffer, int& outWidth, int& outHeight)
 	{
 		std::lock_guard<std::mutex> lock(m_BufferMutex);
 		if (!m_BufferDirty)
@@ -140,7 +140,7 @@ namespace Walnut
 			return false;
 		}
 
-		outBuffer = m_PixelBuffer;
+		std::swap(buffer, m_PixelBuffer);
 		outWidth = m_BufferWidth;
 		outHeight = m_BufferHeight;
 		m_BufferDirty = false;

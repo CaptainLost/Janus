@@ -72,7 +72,7 @@ namespace Walnut {
 		int GetViewHeight() const { return m_ViewHeight; }
 
 		WebViewState GetState() const;
-		bool GetPixelBuffer(std::vector<uint8_t>& outBuffer, int& outWidth, int& outHeight);
+		bool SwapPixelBuffer(std::vector<uint8_t>& buffer, int& outWidth, int& outHeight);
 		bool GetContextMenuRequest(ContextMenuRequest& out);
 		void SetPendingDownloadPath(const std::string& path);
 

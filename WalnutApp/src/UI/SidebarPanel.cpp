@@ -23,14 +23,14 @@ void SidebarPanel::Render()
 	RenderTabSeparator(ICON_FA_BOOKMARK " Persistent",
 		[this](const std::shared_ptr<Tab>& tab)
 		{
-			OnSavedTabMoveToSection(tab);
+			OnTabMoveToSavedSection(tab);
 		});
 	RenderPersistentTabSection();
 
 	RenderTabSeparator(ICON_FA_CLOCK " Temporary",
 		[this](const std::shared_ptr<Tab>& tab)
 		{
-			OnTemporaryTabMoveToSection(tab);
+			OnTabMoveToTemporarySection(tab);
 		});
 	RenderTemporaryTabSection();
 
@@ -240,7 +240,7 @@ void SidebarPanel::OnTemporaryTabClose(const std::shared_ptr<Tab>& tab)
 	m_tabManager->RemoveTab(tab->GetId());
 }
 
-void SidebarPanel::OnTemporaryTabMoveToSection(const std::shared_ptr<Tab>& tab)
+void SidebarPanel::OnTabMoveToTemporarySection(const std::shared_ptr<Tab>& tab)
 {
 
 }
@@ -255,7 +255,7 @@ void SidebarPanel::OnSavedTabClose(const std::shared_ptr<Tab>& tab)
 	m_tabManager->RemoveTab(tab->GetId());
 }
 
-void SidebarPanel::OnSavedTabMoveToSection(const std::shared_ptr<Tab>& tab)
+void SidebarPanel::OnTabMoveToSavedSection(const std::shared_ptr<Tab>& tab)
 {
 
 }

@@ -63,8 +63,6 @@ void BrowserLayer::OnUpdate(float ts)
 
 void BrowserLayer::OnUIRender()
 {
-	ImGui::ShowDemoWindow();
-
 	BuildDockLayout();
 
 	// m_viewportPanel.Render();

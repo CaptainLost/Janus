@@ -208,28 +208,27 @@ bool BrowserTab::UpdateBrowserImage()
 		return false;
 	}
 
-	std::vector<uint8_t> buffer;
 	int width = 0, height = 0;
-
-	if (!m_webView->GetPixelBuffer(buffer, width, height) || width <= 0 || height <= 0)
+	if (!m_webView->SwapPixelBuffer(m_uploadBuffer, width, height) || width <= 0 || height <= 0)
 	{
 		return false;
 	}
 
-	bool needsRecreate =
-		!m_browserImage ||
-		m_browserImage->GetWidth()  != static_cast<uint32_t>(width) ||
-		m_browserImage->GetHeight() != static_cast<uint32_t>(height);
-
-	if (needsRecreate)
+	if (!m_browserImage)
 	{
 		m_browserImage = std::make_shared<Walnut::Image>(
 			static_cast<uint32_t>(width),
 			static_cast<uint32_t>(height),
 			Walnut::ImageFormat::BGRA);
 	}
+	else
+	{
+		m_browserImage->Resize(
+			static_cast<uint32_t>(width),
+			static_cast<uint32_t>(height));
+	}
 
-	m_browserImage->SetData(buffer.data());
+	m_browserImage->SetData(m_uploadBuffer.data());
 	return true;
 }
 
